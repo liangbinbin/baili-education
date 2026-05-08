@@ -94,11 +94,7 @@ router.post('/register',
 router.post('/login',
   validate([
     body('phone').matches(/^1[3-9]\d{9}$/).withMessage('请输入正确的手机号'),
-    body('password')
-      .isLength({ min: 6, max: 20 })
-      .withMessage('密码长度为6-20位')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-      .withMessage('密码需包含大小写字母和数字')
+    body('password').isLength({ min: 6, max: 50 }).withMessage('密码至少6位')
   ]),
   async (req, res, next) => {
     try {
@@ -113,9 +109,12 @@ router.post('/login',
         throw new AppError('账号已被禁用', 401, 'ACCOUNT_DISABLED');
       }
 
-      if (user.password !== password) {
+      const isPasswordValid = await userService.comparePassword(password, user.password);
+      if (!isPasswordValid) {
         throw new AppError('手机号或密码错误', 401, 'AUTH_FAILED');
       }
+
+      await userService.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
 
       const token = generateToken(user._id);
 

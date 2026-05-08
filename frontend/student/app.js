@@ -581,15 +581,15 @@ function showCourseDetail(courseId) {
   document.getElementById('courseDetailContent').innerHTML = `
     <div class="detail-item">
       <label>课程名称</label>
-      <div>${course.name}</div>
+      <div>${escapeHtml(course.name)}</div>
     </div>
     <div class="detail-item">
       <label>课程级别</label>
-      <div>${course.level || '未设置'}</div>
+      <div>${escapeHtml(course.level || '未设置')}</div>
     </div>
     <div class="detail-item">
       <label>课程描述</label>
-      <div>${course.description || '暂无描述'}</div>
+      <div>${escapeHtml(course.description || '暂无描述')}</div>
     </div>
     <div class="detail-item">
       <label>课程状态</label>
@@ -710,8 +710,8 @@ function bindHomeworkButtonEvents() {
 }
 
 function renderHomeworkItem(h, isCompleted) {
-  const courseName = h.courseId?.name || '未知课程';
-  const className = h.classId?.name || '未知班级';
+  const courseName = escapeHtml(h.courseId?.name || '未知课程');
+  const className = escapeHtml(h.classId?.name || '未知班级');
   const publishTime = new Date(h.publishTime).toLocaleDateString();
   const deadline = new Date(h.deadline).toLocaleDateString();
   
@@ -724,36 +724,36 @@ function renderHomeworkItem(h, isCompleted) {
   let actionBtn = '';
   if (isCompleted) {
     actionBtn = `
-      <button class="btn btn-sm btn-success" data-action="share" data-id="${h._id}">
+      <button class="btn btn-sm btn-success" data-action="share" data-id="${escapeAttr(h._id)}">
         📤 分享
       </button>
     `;
   } else {
     if (hasCheckin) {
       actionBtn = `
-        <button class="btn btn-sm btn-primary" data-action="checkin" data-id="${h._id}">
+        <button class="btn btn-sm btn-primary" data-action="checkin" data-id="${escapeAttr(h._id)}">
           📅 打卡
         </button>
       `;
     } else {
       actionBtn = `
-        <button class="btn btn-sm btn-primary" data-action="complete" data-id="${h._id}">
+        <button class="btn btn-sm btn-primary" data-action="complete" data-id="${escapeAttr(h._id)}">
           📝 ${isSingleHomework ? '做作业' : '去完成'}
         </button>
       `;
     }
   }
-  
+
   return `
     <div class="card homework-card ${isCompleted ? 'completed' : ''}">
       <div class="card-body">
         <div class="homework-header">
-          <h4 class="homework-title">${h.title}</h4>
+          <h4 class="homework-title">${escapeHtml(h.title)}</h4>
           ${h.hasCheckin ? '<span class="badge badge-warning">📅 打卡</span>' : ''}
         </div>
         <div class="homework-meta">
           <span>📚 ${courseName}</span>
-          <span>📅 ${deadline}</span>
+          <span>📅 ${escapeHtml(deadline)}</span>
         </div>
         <div class="homework-progress">
           <div class="progress-text">
@@ -766,7 +766,7 @@ function renderHomeworkItem(h, isCompleted) {
         <div class="homework-actions">
           ${actionBtn}
           ${!isCompleted && !isSingleHomework ? `
-            <button class="btn btn-sm btn-secondary" data-action="view-detail" data-id="${h._id}">
+            <button class="btn btn-sm btn-secondary" data-action="view-detail" data-id="${escapeAttr(h._id)}">
               📋 查看详情
             </button>
           ` : ''}
@@ -909,7 +909,7 @@ function openUploadModal(homeworkId, cycleIndex, timeIndex) {
   document.getElementById('homeworkDetailContent').innerHTML = `
     <div class="upload-section">
       <h4>作业内容</h4>
-      <p>${h.content || '请按照要求完成作业'}</p>
+      <p>${escapeHtml(h.content || '请按照要求完成作业')}</p>
       
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
         <div class="upload-icon">📁</div>
@@ -1050,13 +1050,15 @@ async function loadPointsRecords() {
     
     if (container) container.style.display = 'block';
     
-    const result = await apiRequest('/points/records');
+    const startDate = document.getElementById('pointsStartDate')?.value;
+    const endDate = document.getElementById('pointsEndDate')?.value;
+    const result = await apiRequest('/points/records', 'GET', { startDate, endDate });
     
     if (result.data && list) {
       list.innerHTML = result.data.map(record => `
         <li class="record-item">
           <span class="record-type ${record.type}">${record.type === 'earn' ? '+' : '-'}${record.amount}</span>
-          <span class="record-desc">${record.description || record.source}</span>
+          <span class="record-desc">${escapeHtml(record.description || record.source)}</span>
           <span class="record-date">${new Date(record.createdAt).toLocaleDateString()}</span>
         </li>
       `).join('');
@@ -1067,7 +1069,9 @@ async function loadPointsRecords() {
 }
 
 function filterPointsRecords() {
-  loadPointsRecords();
+  const startDate = document.getElementById('pointsStartDate')?.value;
+  const endDate = document.getElementById('pointsEndDate')?.value;
+  loadPointsRecords(startDate, endDate);
 }
 
 function resetPointsFilter() {
@@ -1194,8 +1198,14 @@ async function quickLogin(phone, name) {
       AppState.token = result.data.token;
       AppState.currentUser = result.data.user;
       
-      localStorage.setItem('token', result.data.token);
-      localStorage.setItem('user', JSON.stringify(result.data.user));
+      // ⚠️ 生产环境建议使用 HttpOnly Cookie 存储 Token 以提高安全性
+      // 当前存储方式适用于不需要高安全性的内部系统
+      try {
+        localStorage.setItem('token', result.data.token);
+        localStorage.setItem('user', JSON.stringify(result.data.user));
+      } catch (e) {
+        console.warn('localStorage 不可用，使用内存存储');
+      }
       
       document.getElementById('loginSection').style.display = 'none';
       document.getElementById('mainSection').style.display = 'block';

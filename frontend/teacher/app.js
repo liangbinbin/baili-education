@@ -305,16 +305,28 @@ let bannerInterval = null;
 
 function initCourseBanner() {
     currentBannerSlide = 0;
-    if (bannerInterval) clearInterval(bannerInterval);
+    cleanupBannerInterval();
+    const slider = document.getElementById('courseBannerSlider');
+    if (slider) slider.style.transform = 'translateX(0)';
+    const dots = document.querySelectorAll('.banner-dot');
+    dots.forEach((dot, idx) => dot.classList.toggle('active', idx === 0));
+    
     bannerInterval = setInterval(() => {
-        const slider = document.getElementById('courseBannerSlider');
-        const dots = document.querySelectorAll('.banner-dot');
-        if (slider && dots.length > 0) {
-            currentBannerSlide = (currentBannerSlide + 1) % dots.length;
-            slider.style.transform = `translateX(-${currentBannerSlide * 100}%)`;
-            dots.forEach((dot, idx) => dot.classList.toggle('active', idx === currentBannerSlide));
+        const sliderEl = document.getElementById('courseBannerSlider');
+        const dotEls = document.querySelectorAll('.banner-dot');
+        if (sliderEl && dotEls.length > 0) {
+            currentBannerSlide = (currentBannerSlide + 1) % dotEls.length;
+            sliderEl.style.transform = `translateX(-${currentBannerSlide * 100}%)`;
+            dotEls.forEach((dot, idx) => dot.classList.toggle('active', idx === currentBannerSlide));
         }
     }, 3000);
+}
+
+function cleanupBannerInterval() {
+    if (bannerInterval) {
+        clearInterval(bannerInterval);
+        bannerInterval = null;
+    }
 }
 
 function switchBannerSlide(index) {
@@ -325,6 +337,8 @@ function switchBannerSlide(index) {
         slider.style.transform = `translateX(-${index * 100}%)`;
         dots.forEach((dot, idx) => dot.classList.toggle('active', idx === index));
     }
+    cleanupBannerInterval();
+    initCourseBanner();
 }
 
 function toggleCourseSection(sectionId) {
@@ -333,6 +347,16 @@ function toggleCourseSection(sectionId) {
     if (content && arrow) {
         content.classList.toggle('expanded');
         arrow.classList.toggle('expanded');
+    }
+}
+
+function hideModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('show');
+        if (id === 'courseDetailModal' || id === 'classDetailModal' || id === 'homeworkDetailModal') {
+            cleanupBannerInterval();
+        }
     }
 }
 
@@ -604,6 +628,10 @@ function toggleClassSection(sectionId) {
     }
 }
 
+async function loadHomeworks() {
+    await loadHomework();
+}
+
 async function loadHomework() {
     const res = await api('GET', '/homework');
     if (res.code === 200) {
@@ -764,7 +792,15 @@ async function submitGrade() {
     }
 }
 
-async function loadCheckins() {
+function loadCheckins() {
+    loadCheckinsData();
+}
+
+function loadPointsRanking() {
+    loadPoints();
+}
+
+async function loadCheckinsData() {
     const res = await api('GET', '/checkin');
     if (res.code === 200) {
         const checkins = res.data || [];
@@ -880,9 +916,67 @@ function switchTab(tabId) {
     });
     if (tabId === 'courses') loadCourses();
     if (tabId === 'classes') loadClasses();
-    if (tabId === 'homework') loadHomework();
+    if (tabId === 'homework') loadHomeworks();
     if (tabId === 'checkins') loadCheckins();
-    if (tabId === 'points') loadPoints();
+    if (tabId === 'points') loadPointsRanking();
+}
+
+async function loadHomeworks() {
+    await loadHomework();
+}
+
+function loadCheckins() {
+    loadCheckinsData();
+}
+
+function loadPointsRanking() {
+    loadPoints();
+}
+
+async function loadCheckinsData() {
+    const res = await api('GET', '/checkin');
+    if (res.code === 200) {
+        const checkins = res.data || [];
+        const today = new Date().toDateString();
+        const todayCount = checkins.filter(c => new Date(c.checkinDate).toDateString() === today).length;
+        
+        document.getElementById('checkinStats').innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${checkins.length}</div>
+                <div class="stat-label">总打卡次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${todayCount}</div>
+                <div class="stat-label">今日打卡</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">--</div>
+                <div class="stat-label">平均连续天数</div>
+            </div>
+        `;
+        
+        if (checkins.length === 0) {
+            document.getElementById('checkinList').innerHTML = `
+                <div style="padding:40px 16px;text-align:center;color:#999">暂无打卡记录</div>
+            `;
+        } else {
+            document.getElementById('checkinList').innerHTML = checkins.map(c => `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">打卡记录</div>
+                        <span class="card-badge badge-ongoing">已打卡</span>
+                    </div>
+                    <div class="card-meta">
+                        <span class="card-meta-item">📅 ${formatDate(c.checkinDate)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } else {
+        document.getElementById('checkinList').innerHTML = `
+            <div style="padding:40px 16px;text-align:center;color:#999">加载失败</div>
+        `;
+    }
 }
 
 function toggleAvatarModal() {

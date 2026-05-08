@@ -1,4 +1,10 @@
+const bcrypt = require('bcryptjs');
 const { userService, courseService, classService, homeworkService } = require('../services');
+
+const encryptPassword = async (password) => {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
+};
 
 const sampleData = {
   users: [
@@ -45,7 +51,13 @@ const initTestData = async () => {
 
     console.log('🔄 初始化测试数据...');
 
-    const users = await Promise.all(sampleData.users.map(u => userService.create(u)));
+    const encryptedUsers = await Promise.all(
+      sampleData.users.map(async (u) => ({
+        ...u,
+        password: await encryptPassword(u.password)
+      }))
+    );
+    const users = await Promise.all(encryptedUsers.map(u => userService.create(u)));
     const [admin, teacher1, teacher2, ...students] = users;
 
     const courses = await Promise.all(sampleData.courses.map(c => courseService.create(c)));

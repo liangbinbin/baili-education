@@ -1413,6 +1413,10 @@ body {
     color: #999;
 }
 
+.upload-section {
+    padding: 4px;
+}
+
 .checkin-card {
     background: white;
     border-radius: 16px;

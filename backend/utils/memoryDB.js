@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs');
+
 const users = [];
 const courses = [];
 const classes = [];
@@ -19,9 +21,12 @@ const generateId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString
 const memoryDB = {
   User: {
     create: async (data) => {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(data.password, salt);
       const user = {
         _id: generateId('user'),
         ...data,
+        password: hashedPassword,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -32,6 +37,7 @@ const memoryDB = {
       return users.find(u => {
         if (query.phone) return u.phone === query.phone;
         if (query._id) return u._id === query._id;
+        if (query.openid) return u.openid === query.openid;
         return false;
       });
     },
@@ -42,6 +48,7 @@ const memoryDB = {
       return users.filter(u => {
         if (query.role && u.role !== query.role) return false;
         if (query.isActive !== undefined && u.isActive !== query.isActive) return false;
+        if (query._id && query._id.$in) return query._id.$in.includes(u._id);
         return true;
       });
     },
@@ -52,6 +59,9 @@ const memoryDB = {
         return users[index];
       }
       return null;
+    },
+    comparePassword: async (candidatePassword, hashedPassword) => {
+      return bcrypt.compare(candidatePassword, hashedPassword);
     },
     deleteMany: async () => {
       users.length = 0;

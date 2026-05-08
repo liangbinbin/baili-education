@@ -190,10 +190,6 @@ const pointsController = {
       const currentBalance = student.points || 0;
       const newBalance = type === 'earn' ? currentBalance + amountNum : currentBalance - amountNum;
 
-      await userService.findByIdAndUpdate(studentId, {
-        points: newBalance
-      });
-
       const record = await pointsService.create({
         studentId,
         type,
@@ -203,6 +199,18 @@ const pointsController = {
         description: description || (type === 'earn' ? '积分奖励' : '积分扣除'),
         operatedBy: req.userId
       });
+
+      if (!record) {
+        throw new AppError('积分记录创建失败', 500, 'RECORD_CREATE_FAILED');
+      }
+
+      const updateResult = await userService.findByIdAndUpdate(studentId, {
+        points: newBalance
+      });
+
+      if (!updateResult) {
+        throw new AppError('用户积分更新失败', 500, 'UPDATE_FAILED');
+      }
 
       res.success({
         record,
