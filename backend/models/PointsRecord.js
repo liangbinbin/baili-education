@@ -95,36 +95,55 @@ pointsRecordSchema.statics.getRecords = async function(studentId, options = {}) 
 
 pointsRecordSchema.statics.adjustPoints = async function(studentId, amount, type, source, description, operatedBy = null, sourceDetail = {}) {
   const User = mongoose.model('User');
+  const session = await mongoose.startSession();
+  session.startTransaction();
   
-  const user = await User.findById(studentId);
-  if (!user) {
-    throw new Error('用户不存在');
+  try {
+    let user;
+    let newPoints;
+    
+    if (type === 'earn') {
+      user = await User.findOneAndUpdate(
+        { _id: studentId },
+        { $inc: { points: amount } },
+        { new: true, session }
+      );
+      newPoints = user ? user.points : 0;
+    } else {
+      user = await User.findOneAndUpdate(
+        { _id: studentId, points: { $gte: amount } },
+        { $inc: { points: -amount } },
+        { new: true, session }
+      );
+      if (!user) {
+        user = await User.findById(studentId);
+        if (!user) {
+          throw new Error('用户不存在');
+        }
+        throw new Error('积分不足');
+      }
+      newPoints = user.points;
+    }
+    
+    const record = await this.create([{
+      studentId,
+      type,
+      source,
+      amount,
+      balance: newPoints,
+      description,
+      operatedBy,
+      sourceDetail
+    }], { session });
+    
+    await session.commitTransaction();
+    return record[0];
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
   }
-  
-  if (type === 'deduct' && user.points < amount) {
-    throw new Error('积分不足');
-  }
-  
-  const balance = type === 'earn' 
-    ? user.points + amount 
-    : user.points - amount;
-  
-  const record = await this.create({
-    studentId,
-    type,
-    source,
-    amount,
-    balance,
-    description,
-    operatedBy,
-    sourceDetail
-  });
-  
-  await User.findByIdAndUpdate(studentId, {
-    $inc: { points: type === 'earn' ? amount : -amount }
-  });
-  
-  return record;
 };
 
 module.exports = mongoose.model('PointsRecord', pointsRecordSchema);

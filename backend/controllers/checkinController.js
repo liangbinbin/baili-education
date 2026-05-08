@@ -80,6 +80,9 @@ const checkinController = {
         throw new AppError('该周期已完成打卡', 400, 'ALREADY_CHECKIN');
       }
 
+      const calculatedStreak = await checkinService.calculateStreak
+        ? await checkinService.calculateStreak(req.userId, homeworkId)
+        : 1;
       const checkinPoints = homework.checkinPoints || config.points.default.checkin;
       const sharePoints = shareType === 'moments' 
         ? (homework.sharePoints || config.points.default.share) 
@@ -91,34 +94,26 @@ const checkinController = {
         studentId: req.userId,
         cycleIndex,
         timeIndex,
-        streak: 1,
+        streak: calculatedStreak,
         pointsEarned: checkinPoints,
         shareType,
         date: new Date()
       });
 
       if (totalPoints > 0) {
-        const user = await userService.findById(req.userId);
-        const newBalance = (user.points || 0) + totalPoints;
-
-        await userService.findByIdAndUpdate(req.userId, {
-          points: newBalance
-        });
-
         const description = shareType === 'moments' 
           ? '打卡+朋友圈分享奖励' 
           : '打卡奖励';
 
-        await pointsService.create({
-          studentId: req.userId,
-          type: 'earn',
-          source: 'checkin',
-          amount: totalPoints,
-          balance: newBalance,
+        await pointsService.adjustPoints(
+          req.userId,
+          totalPoints,
+          'earn',
+          'checkin',
           description,
-          relatedId: checkin._id,
-          sourceDetail: { homeworkId, checkinId: checkin._id, shareType }
-        });
+          null,
+          { homeworkId, checkinId: checkin._id, shareType }
+        );
       }
 
       const stats = await checkinService.getStats(req.userId);
@@ -182,14 +177,16 @@ const checkinController = {
       const todayEnd = new Date(todayStart);
       todayEnd.setDate(todayEnd.getDate() + 1);
 
-      const filter = {
-        studentId: req.userId,
-        date: { $gte: todayStart, $lt: todayEnd }
-      };
+      const filter = { studentId: req.userId };
       
       if (homeworkId) filter.homeworkId = homeworkId;
 
-      const checkins = await checkinService.find(filter);
+      let checkins = await checkinService.find(filter);
+      
+      checkins = checkins.filter(c => {
+        const checkinDate = new Date(c.date);
+        return checkinDate >= todayStart && checkinDate < todayEnd;
+      });
 
       const homeworkIds = [...new Set(checkins.map(c => c.homeworkId))];
       const homeworks = await Promise.all(

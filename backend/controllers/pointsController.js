@@ -107,14 +107,15 @@ const pointsController = {
           startDate.setDate(startDate.getDate() - 7);
       }
 
-      const allRecords = await pointsService.find({
-        createdAt: { $gte: startDate }
-      });
+      const allRecords = await pointsService.find({});
+      const filteredRecords = allRecords.filter(r => 
+        r.studentId && new Date(r.createdAt) >= startDate
+      );
 
       const rankingMap = new Map();
       const userPointsMap = new Map();
 
-      allRecords.forEach(record => {
+      filteredRecords.forEach(record => {
         if (record.type === 'earn') {
           const current = rankingMap.get(record.studentId) || 0;
           rankingMap.set(record.studentId, current + record.amount);
@@ -190,31 +191,23 @@ const pointsController = {
       const currentBalance = student.points || 0;
       const newBalance = type === 'earn' ? currentBalance + amountNum : currentBalance - amountNum;
 
-      const record = await pointsService.create({
+      const record = await pointsService.adjustPoints(
         studentId,
+        amountNum,
         type,
-        source: 'manual',
-        amount: amountNum,
-        balance: newBalance,
-        description: description || (type === 'earn' ? '积分奖励' : '积分扣除'),
-        operatedBy: req.userId
-      });
+        'manual',
+        description || (type === 'earn' ? '积分奖励' : '积分扣除'),
+        req.userId,
+        null
+      );
 
       if (!record) {
         throw new AppError('积分记录创建失败', 500, 'RECORD_CREATE_FAILED');
       }
 
-      const updateResult = await userService.findByIdAndUpdate(studentId, {
-        points: newBalance
-      });
-
-      if (!updateResult) {
-        throw new AppError('用户积分更新失败', 500, 'UPDATE_FAILED');
-      }
-
       res.success({
         record,
-        newBalance
+        newBalance: record.balance
       }, '积分调整成功');
     } catch (error) {
       next(error);
@@ -241,15 +234,15 @@ const pointsController = {
           startDate.setMonth(startDate.getMonth() - 1);
       }
 
-      const records = await pointsService.find({
-        studentId: req.userId,
-        createdAt: { $gte: startDate }
-      });
+      const allRecords = await pointsService.find({ studentId: req.userId });
+      const filteredRecords = allRecords.filter(r => 
+        new Date(r.createdAt) >= startDate
+      );
 
       const dailyStats = {};
       const sourceStats = {};
 
-      records.forEach(record => {
+      filteredRecords.forEach(record => {
         const date = new Date(record.createdAt).toISOString().split('T')[0];
         
         if (!dailyStats[date]) {
@@ -282,11 +275,11 @@ const pointsController = {
         }))
         .sort((a, b) => b.amount - a.amount);
 
-      const totalEarned = records
+      const totalEarned = filteredRecords
         .filter(r => r.type === 'earn')
         .reduce((sum, r) => sum + r.amount, 0);
       
-      const totalSpent = records
+      const totalSpent = filteredRecords
         .filter(r => r.type === 'deduct')
         .reduce((sum, r) => sum + r.amount, 0);
 

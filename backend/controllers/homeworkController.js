@@ -124,36 +124,28 @@ const homeworkController = {
         });
       }
 
-      const cyclesCount = homework.cyclesCount || 1;
+      const totalTasksCount = homework.totalTasksCount || 1;
       const allSubmissions = await submissionService.find({
         homeworkId,
         studentId: req.userId,
         isCompleted: true
       });
 
-      const isHomeworkCompleted = allSubmissions.length >= cyclesCount;
+      const isHomeworkCompleted = allSubmissions.length >= totalTasksCount;
       let earnedPoints = 0;
 
       if (isHomeworkCompleted && isNewSubmission) {
         earnedPoints = homework.points || config.points.default.homework;
         
-        const user = await userService.findById(req.userId);
-        const newBalance = (user.points || 0) + earnedPoints;
-        
-        await userService.findByIdAndUpdate(req.userId, {
-          points: newBalance
-        });
-
-        await pointsService.create({
-          studentId: req.userId,
-          type: 'earn',
-          source: 'homework',
-          amount: earnedPoints,
-          balance: newBalance,
-          description: `完成作业：${homework.title}`,
-          relatedId: homework._id,
-          sourceDetail: { homeworkId }
-        });
+        await pointsService.adjustPoints(
+          req.userId,
+          earnedPoints,
+          'earn',
+          'homework',
+          `完成作业：${homework.title}`,
+          null,
+          { homeworkId }
+        );
       }
 
       res.success({
@@ -206,23 +198,15 @@ const homeworkController = {
       await submissionService.update(submission._id, submission);
 
       if (sharePoints > 0) {
-        const user = await userService.findById(req.userId);
-        const newBalance = (user.points || 0) + sharePoints;
-
-        await userService.findByIdAndUpdate(req.userId, {
-          points: newBalance
-        });
-
-        await pointsService.create({
-          studentId: req.userId,
-          type: 'earn',
-          source: 'share',
-          amount: sharePoints,
-          balance: newBalance,
-          description: shareType === 'moments' ? '朋友圈分享奖励' : '好友分享奖励',
-          relatedId: homework._id,
-          sourceDetail: { homeworkId, shareType }
-        });
+        await pointsService.adjustPoints(
+          req.userId,
+          sharePoints,
+          'earn',
+          'share',
+          shareType === 'moments' ? '朋友圈分享奖励' : '好友分享奖励',
+          null,
+          { homeworkId, shareType }
+        );
       }
 
       res.success({
@@ -259,24 +243,15 @@ const homeworkController = {
       await submissionService.update(submission._id, submission);
 
       if (bonusPoints > 0) {
-        const student = await userService.findById(submission.studentId);
-        const newBalance = (student.points || 0) + bonusPoints;
-
-        await userService.findByIdAndUpdate(submission.studentId, {
-          points: newBalance
-        });
-
-        await pointsService.create({
-          studentId: submission.studentId,
-          type: 'earn',
-          source: 'bonus',
-          amount: bonusPoints,
-          balance: newBalance,
-          description: `作业批改奖励：${grade}等级`,
-          relatedId: submission._id,
-          operatedBy: req.userId,
-          sourceDetail: { homeworkId: submission.homeworkId, grade }
-        });
+        await pointsService.adjustPoints(
+          submission.studentId,
+          bonusPoints,
+          'earn',
+          'bonus',
+          `作业批改奖励：${grade}等级`,
+          req.userId,
+          { homeworkId: submission.homeworkId, grade }
+        );
       }
 
       const updatedSubmission = await submissionService.findById(submission._id);

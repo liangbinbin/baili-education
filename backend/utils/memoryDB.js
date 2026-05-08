@@ -34,12 +34,13 @@ const memoryDB = {
       return user;
     },
     findOne: async (query) => {
-      return users.find(u => {
+      const result = users.find(u => {
         if (query.phone) return u.phone === query.phone;
         if (query._id) return u._id === query._id;
         if (query.openid) return u.openid === query.openid;
         return false;
       });
+      return result || null;
     },
     findById: async (id) => {
       return users.find(u => u._id === id);
@@ -238,6 +239,34 @@ const memoryDB = {
     },
     deleteMany: async () => {
       checkins.length = 0;
+    },
+    calculateStreak: async (studentId, homeworkId) => {
+      const studentCheckins = checkins.filter(c => c.studentId === studentId && c.homeworkId === homeworkId);
+      if (studentCheckins.length === 0) return 1;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const yesterdayCheckin = studentCheckins.find(c => {
+        const checkinDate = new Date(c.date);
+        checkinDate.setHours(0, 0, 0, 0);
+        return checkinDate.getTime() >= yesterday.getTime() && checkinDate.getTime() < today.getTime();
+      });
+
+      if (yesterdayCheckin) {
+        return yesterdayCheckin.streak + 1;
+      }
+
+      const todayCheckin = studentCheckins.find(c => {
+        const checkinDate = new Date(c.date);
+        checkinDate.setHours(0, 0, 0, 0);
+        return checkinDate.getTime() === today.getTime();
+      });
+
+      return todayCheckin ? todayCheckin.streak : 1;
     },
     getStats: async (studentId) => {
       const studentCheckins = checkins.filter(c => c.studentId === studentId);

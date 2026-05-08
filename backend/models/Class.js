@@ -86,7 +86,7 @@ const classSchema = new mongoose.Schema({
   },
   classStatusText: {
     type: String,
-    enum: ['正常', '正常', '停课', '结班'],
+    enum: ['正常', '进行中', '停课', '结班'],
     default: '正常'
   }
 }, {

@@ -25,7 +25,8 @@ const courseService = {
 const classService = {
   find: async (query) => Class.find(query),
   findById: async (id) => Class.findById(id),
-  create: async (data) => Class.create(data)
+  create: async (data) => Class.create(data),
+  findByIdAndUpdate: async (id, update) => Class.findByIdAndUpdate ? Class.findByIdAndUpdate(id, update) : null
 };
 
 const homeworkService = {
@@ -48,15 +49,30 @@ const checkinService = {
   create: async (data) => Checkin.create(data),
   find: async (query) => Checkin.find(query),
   findOne: async (query) => Checkin.findOne(query),
-  findById: async (id) => Checkin.findById(id),
-  findByIdAndUpdate: async (id, update) => Checkin.findByIdAndUpdate(id, update),
-  getStats: async (studentId) => Checkin.getStats(studentId)
+  findById: async (id) => Checkin.findById ? Checkin.findById(id) : null,
+  findByIdAndUpdate: async (id, update) => Checkin.findByIdAndUpdate ? Checkin.findByIdAndUpdate(id, update) : null,
+  getStats: async (studentId) => Checkin.getStats ? Checkin.getStats(studentId) : null,
+  calculateStreak: async (studentId, homeworkId) => Checkin.calculateStreak ? Checkin.calculateStreak(studentId, homeworkId) : 1
 };
 
 const pointsService = {
   create: async (data) => PointsRecord.create(data),
   find: async (query) => PointsRecord.find(query),
-  findById: async (id) => PointsRecord.findById(id)
+  findById: async (id) => PointsRecord.findById(id),
+  adjustPoints: async (studentId, amount, type, source, description, operatedBy, sourceDetail) => {
+    if (PointsRecord.adjustPoints) {
+      return PointsRecord.adjustPoints(studentId, amount, type, source, description, operatedBy, sourceDetail);
+    }
+    const user = await User.findById(studentId);
+    if (!user) throw new Error('用户不存在');
+    if (type === 'deduct' && user.points < amount) throw new Error('积分不足');
+    const balance = type === 'earn' ? user.points + amount : user.points - amount;
+    const record = await PointsRecord.create({
+      studentId, type, source, amount, balance, description, operatedBy, sourceDetail
+    });
+    await User.findByIdAndUpdate(studentId, { $inc: { points: type === 'earn' ? amount : -amount } });
+    return record;
+  }
 };
 
 module.exports = {
