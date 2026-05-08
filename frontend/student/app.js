@@ -1022,7 +1022,7 @@ async function loadRanking() {
   try {
     const result = await apiRequest('/points/ranking', 'GET', { period: 'week' });
     
-    if (result.data?.ranking) {
+    if (result.code === 200 && result.data?.ranking) {
       const container = document.getElementById('rankingContainer');
       const list = document.getElementById('rankingListOld');
       

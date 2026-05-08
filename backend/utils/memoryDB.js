@@ -15,8 +15,13 @@ let homeworkIdCounter = 1;
 let submissionIdCounter = 1;
 let checkinIdCounter = 1;
 let pointsRecordIdCounter = 1;
+const idCounters = {};
 
-const generateId = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const generateId = (prefix) => {
+  const timestamp = Date.now().toString(36);
+  const counter = idCounters[prefix] = (idCounters[prefix] || 0) + 1;
+  return `${prefix}_${timestamp}_${counter.toString(36).padStart(4, '0')}`;
+};
 
 const memoryDB = {
   User: {
@@ -124,6 +129,14 @@ const memoryDB = {
     findById: async (id) => {
       return classes.find(c => c._id === id);
     },
+    findByIdAndUpdate: async (id, update) => {
+      const index = classes.findIndex(c => c._id === id);
+      if (index !== -1) {
+        classes[index] = { ...classes[index], ...update, updatedAt: new Date() };
+        return classes[index];
+      }
+      return null;
+    },
     deleteMany: async () => {
       classes.length = 0;
     }
@@ -182,6 +195,7 @@ const memoryDB = {
         if (query.studentId && s.studentId !== query.studentId) return false;
         if (query.cycleIndex !== undefined && s.cycleIndex !== query.cycleIndex) return false;
         if (query.timeIndex !== undefined && s.timeIndex !== query.timeIndex) return false;
+        if (query.isCompleted !== undefined && s.isCompleted !== query.isCompleted) return false;
         return true;
       });
     },
@@ -236,6 +250,17 @@ const memoryDB = {
         if (query.timeIndex !== undefined && c.timeIndex !== query.timeIndex) return false;
         return true;
       });
+    },
+    findById: async (id) => {
+      return checkins.find(c => c._id === id);
+    },
+    findByIdAndUpdate: async (id, update) => {
+      const index = checkins.findIndex(c => c._id === id);
+      if (index !== -1) {
+        checkins[index] = { ...checkins[index], ...update, updatedAt: new Date() };
+        return checkins[index];
+      }
+      return null;
     },
     deleteMany: async () => {
       checkins.length = 0;
@@ -300,14 +325,59 @@ const memoryDB = {
         createdAt: new Date()
       };
       pointsRecords.push(record);
+
+      if (data.studentId && data.type === 'earn') {
+        const userIndex = users.findIndex(u => u._id === data.studentId);
+        if (userIndex !== -1) {
+          users[userIndex].points = (users[userIndex].points || 0) + data.amount;
+        }
+      }
+
       return record;
     },
     find: async (query = {}) => {
       return pointsRecords.filter(r => {
         if (query.studentId && r.studentId !== query.studentId) return false;
         if (query.type && r.type !== query.type) return false;
+        if (query.source && r.source !== query.source) return false;
         return true;
       });
+    },
+    findById: async (id) => {
+      return pointsRecords.find(r => r._id === id);
+    },
+    findByIdAndUpdate: async (id, update) => {
+      const index = pointsRecords.findIndex(r => r._id === id);
+      if (index !== -1) {
+        pointsRecords[index] = { ...pointsRecords[index], ...update, updatedAt: new Date() };
+        return pointsRecords[index];
+      }
+      return null;
+    },
+    adjustPoints: async (studentId, amount, type, source, description, operatedBy, sourceDetail) => {
+      const user = users.find(u => u._id === studentId);
+      if (!user) throw new Error('用户不存在');
+
+      const currentBalance = user.points || 0;
+      const newBalance = type === 'earn' ? currentBalance + amount : currentBalance - amount;
+
+      if (type === 'deduct' && currentBalance < amount) {
+        throw new Error('积分不足');
+      }
+
+      const record = await pointsRecords.create({
+        studentId,
+        type,
+        source,
+        amount,
+        balance: newBalance,
+        description,
+        operatedBy,
+        sourceDetail
+      });
+
+      user.points = newBalance;
+      return record;
     },
     deleteMany: async () => {
       pointsRecords.length = 0;

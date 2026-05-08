@@ -31,10 +31,10 @@ const protect = async (req, res, next) => {
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      return res.error(401, 'TOKEN_INVALID', 'Token无效');
+      return next(new AppError('Token无效', 401, 'TOKEN_INVALID'));
     }
     if (error.name === 'TokenExpiredError') {
-      return res.error(401, 'TOKEN_EXPIRED', 'Token已过期，请重新登录');
+      return next(new AppError('Token已过期，请重新登录', 401, 'TOKEN_EXPIRED'));
     }
     next(error);
   }
@@ -43,7 +43,7 @@ const protect = async (req, res, next) => {
 const restrictTo = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.error(403, 'FORBIDDEN', '您没有权限执行此操作');
+      return next(new AppError('您没有权限执行此操作', 403, 'FORBIDDEN'));
     }
     next();
   };

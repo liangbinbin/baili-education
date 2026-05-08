@@ -1,5 +1,5 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err);
+  console.error('❌ Error:', err.stack || err);
 
   if (err.name === 'ValidationError') {
     const errors = Object.values(err.errors).map(e => e.message);

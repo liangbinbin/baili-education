@@ -57,7 +57,7 @@ function formatDate(date) {
 }
 
 async function loadCourses() {
-    const res = await api('GET', '/course');
+    const res = await api('GET', '/course/list');
     if (res.code === 200) {
         coursesCache = res.data || [];
         renderCourses();
@@ -363,7 +363,7 @@ function hideModal(id) {
 async function loadClasses() {
     const courseFilter = document.getElementById('classCourseFilter')?.value || '';
     const statusFilter = document.getElementById('classStatusFilter')?.value || '';
-    const res = await api('GET', '/class');
+    const res = await api('GET', '/class/list');
     if (res.code === 200) {
         classesCache = res.data || [];
         let filtered = classesCache;
@@ -633,7 +633,7 @@ async function loadHomeworks() {
 }
 
 async function loadHomework() {
-    const res = await api('GET', '/homework');
+    const res = await api('GET', '/homework/list');
     if (res.code === 200) {
         const homeworks = res.data || [];
         if (homeworks.length === 0) {
@@ -801,7 +801,7 @@ function loadPointsRanking() {
 }
 
 async function loadCheckinsData() {
-    const res = await api('GET', '/checkin');
+    const res = await api('GET', '/checkin/stats');
     if (res.code === 200) {
         const checkins = res.data || [];
         const today = new Date().toDateString();
@@ -934,7 +934,7 @@ function loadPointsRanking() {
 }
 
 async function loadCheckinsData() {
-    const res = await api('GET', '/checkin');
+    const res = await api('GET', '/checkin/stats');
     if (res.code === 200) {
         const checkins = res.data || [];
         const today = new Date().toDateString();
