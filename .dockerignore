@@ -1,0 +1,17 @@
+.git
+.gitignore
+*.md
+node_modules
+npm-debug.log
+.env
+.env.*
+*.log
+coverage
+.nyc_output
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+frontend/node_modules
+backend/node_modules
+**/node_modules

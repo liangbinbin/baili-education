@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: baili-backend-dev
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongo:27017/baili_education
+      - USE_MEMORY_DB=false
+      - JWT_SECRET=dev-secret-change-in-production
+      - JWT_EXPIRES_IN=7d
+      - CORS_ORIGIN=*
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+    depends_on:
+      - mongo
+    command: nodemon backend/server.js
+    networks:
+      - baili-dev-network
+
+  mongo:
+    image: mongo:6.0
+    container_name: baili-mongodb-dev
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=baili_education
+    volumes:
+      - mongo-dev-data:/data/db
+    networks:
+      - baili-dev-network
+
+networks:
+  baili-dev-network:
+    driver: bridge
+
+volumes:
+  mongo-dev-data:
+    driver: local
