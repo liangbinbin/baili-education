@@ -199,6 +199,9 @@ const memoryDB = {
         return true;
       });
     },
+    findById: async (id) => {
+      return submissions.find(s => s._id === id);
+    },
     findByIdAndUpdate: async (id, update) => {
       const index = submissions.findIndex(s => s._id === id);
       if (index !== -1) {
@@ -365,7 +368,8 @@ const memoryDB = {
         throw new Error('积分不足');
       }
 
-      const record = await pointsRecords.create({
+      const record = {
+        _id: generateId('points'),
         studentId,
         type,
         source,
@@ -373,8 +377,10 @@ const memoryDB = {
         balance: newBalance,
         description,
         operatedBy,
-        sourceDetail
-      });
+        sourceDetail,
+        createdAt: new Date()
+      };
+      pointsRecords.push(record);
 
       user.points = newBalance;
       return record;
