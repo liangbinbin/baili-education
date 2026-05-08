@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>百里教学管理系统 - API测试</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1 { text-align: center; color: #333; margin-bottom: 20px; }
+    .test-section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .test-title { font-size: 16px; font-weight: 600; color: #1890ff; margin-bottom: 12px; }
+    .test-result { font-size: 14px; padding: 8px 12px; border-radius: 6px; margin: 8px 0; }
+    .success { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+    .error { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
+    .info { background: #f0f5ff; border: 1px solid #adc6ff; color: #1890ff; }
+    .btn { display: inline-block; padding: 8px 16px; background: #1890ff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; margin-right: 8px; margin-bottom: 8px; }
+    .btn:hover { background: #40a9ff; }
+    .btn:disabled { background: #d9d9d9; cursor: not-allowed; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto; max-height: 200px; }
+    .status { text-align: center; padding: 40px; }
+    .status-icon { font-size: 48px; margin-bottom: 16px; }
+    .status-text { font-size: 18px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎓 百里教学管理系统<br><small>API对接测试</small></h1>
+    
+    <div class="test-section">
+      <div class="test-title">📡 后端服务状态</div>
+      <div id="healthStatus" class="test-result info">正在检测...</div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">🔐 用户登录</div>
+      <button class="btn" onclick="testLogin('13800138004', '小明')">学生登录（小明）</button>
+      <button class="btn" onclick="testLogin('13800138002', '李老师')">教师登录</button>
+      <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">📚 数据加载</div>
+      <button class="btn" id="loadDataBtn" onclick="testLoadData()" disabled>加载初始化数据</button>
+      <div id="dataResult"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">📝 作业功能</div>
+      <button class="btn" id="homeworkListBtn" onclick="testHomeworkList()" disabled>获取作业列表</button>
+      <button class="btn" id="submitHomeworkBtn" onclick="testSubmitHomework()" disabled>提交作业</button>
+      <div id="homeworkResult"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">📅 打卡功能</div>
+      <button class="btn" id="checkinStatsBtn" onclick="testCheckinStats()" disabled>打卡统计</button>
+      <button class="btn" id="doCheckinBtn" onclick="testDoCheckin()" disabled>提交打卡</button>
+      <div id="checkinResult"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">🏆 积分功能</div>
+      <button class="btn" id="pointsBtn" onclick="testPoints()" disabled>获取积分</button>
+      <button class="btn" id="rankingBtn" onclick="testRanking()" disabled>积分排行</button>
+      <div id="pointsResult"></div>
+    </div>
+    
+    <div class="test-section">
+      <div class="test-title">📊 测试总结</div>
+      <div id="summary" class="status">
+        <div class="status-icon">⏳</div>
+        <div class="status-text">正在运行测试...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/api';
+    let token = null;
+    let user = null;
+    let homeworkId = null;
+    let testResults = { passed: 0, failed: 0 };
+
+    async function apiRequest(url, options = {}) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      
+      try {
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('API Error:', error);
+        throw error;
+      }
+    }
+
+    function showResult(id, message, isSuccess) {
+      document.getElementById(id).innerHTML = `<div class="test-result ${isSuccess ? 'success' : 'error'}">${message}</div>`;
+    }
+
+    function showDetail(id, data) {
+      document.getElementById(id).innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    function updateSummary() {
+      const total = testResults.passed + testResults.failed;
+      const icon = testResults.failed === 0 ? '✅' : '⚠️';
+      document.getElementById('summary').innerHTML = `
+        <div class="status-icon">${icon}</div>
+        <div class="status-text">
+          测试完成: ${total}个<br>
+          <span style="color:#52c41a">通过: ${testResults.passed}</span> | 
+          <span style="color:#ff4d4f">失败: ${testResults.failed}</span>
+        </div>
+      `;
+    }
+
+    async function testHealth() {
+      try {
+        const result = await apiRequest(`${API_BASE}/health`);
+        if (result.code === 200) {
+          document.getElementById('healthStatus').className = 'test-result success';
+          document.getElementById('healthStatus').innerHTML = `✅ 后端服务正常 (${new Date().toLocaleTimeString()})`;
+          return true;
+        }
+      } catch (e) {
+        document.getElementById('healthStatus').className = 'test-result error';
+        document.getElementById('healthStatus').innerHTML = '❌ 后端服务未启动或无法连接';
+        return false;
+      }
+    }
+
+    async function testLogin(phone, name) {
+      try {
+        const result = await apiRequest(`${API_BASE}/auth/test-login`, {
+          method: 'POST',
+          body: JSON.stringify({ phone, name })
+        });
+        
+        if (result.code === 200 && result.data) {
+          token = result.data.token;
+          user = result.data.user;
+          showResult('loginResult', `✅ 登录成功: ${user.name} (${user.role})`, true);
+          showDetail('loginResult', { token: token.substring(0, 30) + '...', user });
+          testResults.passed++;
+          
+          document.getElementById('loadDataBtn').disabled = false;
+          document.getElementById('homeworkListBtn').disabled = false;
+          document.getElementById('checkinStatsBtn').disabled = false;
+          document.getElementById('pointsBtn').disabled = false;
+          document.getElementById('rankingBtn').disabled = false;
+          
+          return true;
+        } else {
+          showResult('loginResult', `❌ 登录失败: ${result.message}`, false);
+          testResults.failed++;
+          return false;
+        }
+      } catch (e) {
+        showResult('loginResult', '❌ 登录失败: ' + e.message, false);
+        testResults.failed++;
+        return false;
+      }
+    }
+
+    async function testLoadData() {
+      try {
+        const result = await apiRequest(`${API_BASE}/batch/init`);
+        
+        if (result.code === 200 && result.data) {
+          const data = result.data;
+          showResult('dataResult', `✅ 数据加载成功: ${data.courses?.length || 0}课程, ${data.homeworks?.length || 0}作业`, true);
+          showDetail('dataResult', {
+            user: data.user,
+            courses: data.courses?.length,
+            homeworks: data.homeworks?.length
+          });
+          testResults.passed++;
+          return data;
+        }
+      } catch (e) {
+        showResult('dataResult', '❌ 数据加载失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testHomeworkList() {
+      try {
+        const result = await apiRequest(`${API_BASE}/homework/list`);
+        
+        if (result.code === 200) {
+          const homeworks = result.data || [];
+          homeworkId = homeworks.find(h => !h.hasCheckin)?._id || homeworks[0]?._id;
+          showResult('homeworkResult', `✅ 获取作业列表成功: ${homeworks.length}个作业`, true);
+          showDetail('homeworkResult', { count: homeworks.length, first: homeworks[0] });
+          document.getElementById('submitHomeworkBtn').disabled = false;
+          testResults.passed++;
+          return homeworks;
+        }
+      } catch (e) {
+        showResult('homeworkResult', '❌ 获取作业失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testSubmitHomework() {
+      if (!homeworkId) {
+        showResult('homeworkResult', '❌ 请先获取作业列表', false);
+        return;
+      }
+      
+      try {
+        const result = await apiRequest(`${API_BASE}/homework/submit`, {
+          method: 'POST',
+          body: JSON.stringify({
+            homeworkId,
+            cycleIndex: 0,
+            timeIndex: 0,
+            files: [{ type: 'image', url: 'test.jpg' }],
+            comment: 'API测试提交'
+          })
+        });
+        
+        if (result.success || result.code === 200) {
+          showResult('homeworkResult', `✅ 作业提交成功: +${result.data?.earnedPoints || 0}积分`, true);
+          showDetail('homeworkResult', result.data);
+          document.getElementById('doCheckinBtn').disabled = false;
+          testResults.passed++;
+        } else {
+          showResult('homeworkResult', `❌ 提交失败: ${result.message}`, false);
+          testResults.failed++;
+        }
+      } catch (e) {
+        showResult('homeworkResult', '❌ 提交失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testCheckinStats() {
+      try {
+        const result = await apiRequest(`${API_BASE}/checkin/stats`);
+        
+        if (result.code === 200) {
+          showResult('checkinResult', `✅ 打卡统计获取成功`, true);
+          showDetail('checkinResult', result.data);
+          testResults.passed++;
+        }
+      } catch (e) {
+        showResult('checkinResult', '❌ 获取统计失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testDoCheckin() {
+      const homeworks = await testHomeworkList();
+      const checkinHomework = homeworks?.find(h => h.hasCheckin);
+      
+      if (!checkinHomework) {
+        showResult('checkinResult', '❌ 没有可打卡的作业', false);
+        return;
+      }
+      
+      try {
+        const result = await apiRequest(`${API_BASE}/checkin/submit`, {
+          method: 'POST',
+          body: JSON.stringify({
+            homeworkId: checkinHomework._id,
+            cycleIndex: 0,
+            timeIndex: 0
+          })
+        });
+        
+        if (result.success || result.code === 200) {
+          showResult('checkinResult', `✅ 打卡成功: +${result.data?.pointsEarned || 0}积分`, true);
+          showDetail('checkinResult', result.data);
+          testResults.passed++;
+        } else {
+          showResult('checkinResult', `❌ 打卡失败: ${result.message}`, false);
+          testResults.failed++;
+        }
+      } catch (e) {
+        showResult('checkinResult', '❌ 打卡失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testPoints() {
+      try {
+        const result = await apiRequest(`${API_BASE}/points/my`);
+        
+        if (result.code === 200) {
+          showResult('pointsResult', `✅ 积分信息: ${result.data?.current || 0}积分`, true);
+          showDetail('pointsResult', result.data);
+          testResults.passed++;
+        }
+      } catch (e) {
+        showResult('pointsResult', '❌ 获取积分失败: ' + e.message, false);
+        testResults.failed++;
+      }
+    }
+
+    async function testRanking() {
+      try {
+        const result = await apiRequest(`${API_BASE}/points/ranking?period=week`);
+        
+        if (result.code === 200) {
+          showResult('pointsResult', `✅ 排行榜: 第${result.data?.myRank || '-'}名`, true);
+          showDetail('pointsResult', result.data);
+          testResults.passed++;
+          updateSummary();
+        }
+      } catch (e) {
+        showResult('pointsResult', '❌ 获取排行榜失败: ' + e.message, false);
+        testResults.failed++;
+        updateSummary();
+      }
+    }
+
+    window.onload = async () => {
+      await testHealth();
+    };
+  </script>
+</body>
+</html>
