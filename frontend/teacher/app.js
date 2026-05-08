@@ -1,6 +1,18 @@
 const API_BASE = '/api';
 const TEST_MODE = true;
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+}
+
 let coursesCache = [];
 let classesCache = [];
 
@@ -22,14 +34,16 @@ const showToast = toast.show.bind(toast);
 
 async function api(method, path, body) {
     const url = API_BASE + path;
+    const savedToken = sessionStorage.getItem('token') || localStorage.getItem('token');
     const options = {
         method,
         headers: {
-            'Content-Type': 'application/json',
-            'x-test-role': 'teacher',
-            'x-test-user-id': 'teacher_1'
+            'Content-Type': 'application/json'
         }
     };
+    if (savedToken) {
+        options.headers['Authorization'] = `Bearer ${savedToken}`;
+    }
     if (body) options.body = JSON.stringify(body);
     const res = await fetch(url, options);
     return await res.json();
@@ -99,17 +113,17 @@ function renderCourses() {
         return `
         <div class="course-card">
             <div class="course-card-header">
-                <h3 class="course-card-title">${c.name}</h3>
+                <h3 class="course-card-title">${escapeHtml(c.name)}</h3>
                 <div class="course-card-tags">
-                    <span class="course-card-tag ${type.class}">${c.courseTypeText || type.text}</span>
-                    <span class="course-card-tag ${status.class}">${status.text}</span>
+                    <span class="course-card-tag ${type.class}">${escapeHtml(c.courseTypeText || type.text)}</span>
+                    <span class="course-card-tag ${status.class}">${escapeHtml(status.text)}</span>
                 </div>
             </div>
             
             <div class="course-card-info">
                 <div class="course-info-row">
                     <span class="course-info-label">📚 适合年级</span>
-                    <span class="course-info-value">${suitableGrade}</span>
+                    <span class="course-info-value">${escapeHtml(suitableGrade)}</span>
                 </div>
                 <div class="course-info-row">
                     <span class="course-info-label">📖 课节数量</span>
@@ -121,13 +135,13 @@ function renderCourses() {
                 </div>
                 <div class="course-info-row">
                     <span class="course-info-label">⭐ 课程级别</span>
-                    <span class="course-info-value">${c.level || '--'}</span>
+                    <span class="course-info-value">${escapeHtml(c.level || '--')}</span>
                 </div>
             </div>
             
-            <div class="course-card-intro">${c.courseIntro || c.description || '暂无简介'}</div>
+            <div class="course-card-intro">${escapeHtml(c.courseIntro || c.description || '暂无简介')}</div>
             
-            <button class="course-card-btn" onclick="event.stopPropagation(); showCourseDetail('${c._id}')">
+            <button class="course-card-btn" onclick="event.stopPropagation(); showCourseDetail('${escapeAttr(c._id)}')">
                 查看课程详情
             </button>
         </div>
@@ -188,7 +202,7 @@ async function showCourseDetail(courseId) {
             <div class="course-banner-slider" id="courseBannerSlider">
                 ${bannerImages.map((img, idx) => `
                     <div class="course-banner-slide" style="background: ${idx % 2 === 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}">
-                        ${img}
+                        ${escapeHtml(img)}
                     </div>
                 `).join('')}
             </div>
@@ -200,19 +214,19 @@ async function showCourseDetail(courseId) {
         </div>
         
         <!-- 课程名称 -->
-        <div class="course-title">${c.name}</div>
+        <div class="course-title">${escapeHtml(c.name)}</div>
         
         <!-- 课程类型和报名状态 -->
         <div class="course-tags">
-            <span class="course-tag ${type.class}">🏷️ ${c.courseTypeText || type.text}</span>
-            <span class="course-tag ${status.class}">📋 ${status.text}</span>
+            <span class="course-tag ${type.class}">🏷️ ${escapeHtml(c.courseTypeText || type.text)}</span>
+            <span class="course-tag ${status.class}">📋 ${escapeHtml(status.text)}</span>
         </div>
         
         <!-- 基本信息网格 -->
         <div class="course-info-grid">
             <div class="course-info-item">
                 <span class="course-info-label">适合年级</span>
-                <span class="course-info-value">${suitableGradeText}</span>
+                <span class="course-info-value">${escapeHtml(suitableGradeText)}</span>
             </div>
             <div class="course-info-item">
                 <span class="course-info-label">创建时间</span>
@@ -220,7 +234,7 @@ async function showCourseDetail(courseId) {
             </div>
             <div class="course-info-item">
                 <span class="course-info-label">课程级别</span>
-                <span class="course-info-value">${c.level || '--'}</span>
+                <span class="course-info-value">${escapeHtml(c.level || '--')}</span>
             </div>
             <div class="course-info-item">
                 <span class="course-info-label">课节数量</span>
@@ -241,9 +255,9 @@ async function showCourseDetail(courseId) {
                 <div class="section-list">
                     ${c.sections?.length > 0 ? c.sections.map(s => `
                         <div class="section-item">
-                            <span class="section-num">${s.sectionNum}</span>
-                            <span class="section-name">${s.name}</span>
-                            <span class="section-duration">${s.duration || 90}分钟</span>
+                            <span class="section-num">${escapeHtml(s.sectionNum)}</span>
+                            <span class="section-name">${escapeHtml(s.name)}</span>
+                            <span class="section-duration">${escapeHtml(s.duration || 90)}分钟</span>
                         </div>
                     `).join('') : '<div style="padding: 16px; text-align: center; color: #999;">暂无课节信息</div>'}
                 </div>
@@ -264,14 +278,14 @@ async function showCourseDetail(courseId) {
                     ${relatedClasses.length > 0 ? relatedClasses.map(cls => `
                         <div class="class-list-item">
                             <div class="class-info">
-                                <div class="class-name">${cls.name}</div>
+                                <div class="class-name">${escapeHtml(cls.name)}</div>
                                 <div class="class-meta">
                                     ${cls.classStatus === 'ongoing' ? '🔵 正常' : cls.classStatus === 'paused' ? '🟡 停课' : '⚪ 结班'} · 
                                     ${cls.studentCount || cls.studentIds?.length || 0}人 · 
-                                    ${cls.classroom || '未分配教室'}
+                                    ${escapeHtml(cls.classroom || '未分配教室')}
                                 </div>
                             </div>
-                            <span class="card-badge badge-${cls.classStatus}">${formatStatus(cls.classStatus)}</span>
+                            <span class="card-badge badge-${escapeAttr(cls.classStatus)}">${formatStatus(cls.classStatus)}</span>
                         </div>
                     `).join('') : '<div style="padding: 16px; text-align: center; color: #999;">暂无关联班级</div>'}
                 </div>
@@ -281,14 +295,14 @@ async function showCourseDetail(courseId) {
         <!-- 课程简介 -->
         <div class="course-section static">
             <div class="static-section-title">📝 课程简介</div>
-            <div class="course-intro">${c.courseIntro || c.description || '暂无简介'}</div>
+            <div class="course-intro">${escapeHtml(c.courseIntro || c.description || '暂无简介')}</div>
         </div>
         
         <!-- 课程详细内容 -->
         ${c.courseDetail ? `
         <div class="course-section static">
             <div class="static-section-title">📄 课程详情</div>
-            <div class="course-detail-content">${c.courseDetail}</div>
+            <div class="course-detail-content">${escapeHtml(c.courseDetail)}</div>
         </div>
         ` : ''}
     `;
@@ -649,25 +663,25 @@ async function loadHomework() {
             return `
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">${h.title}</div>
-                        <span class="card-badge ${statusClass}">${status}</span>
+                        <div class="card-title">${escapeHtml(h.title)}</div>
+                        <span class="card-badge ${statusClass}">${escapeHtml(status)}</span>
                     </div>
                     <div class="card-meta">
-                        <span class="card-meta-item">📚 ${h.courseId?.name || '--'}</span>
-                        <span class="card-meta-item">👥 ${h.classId?.name || '--'}</span>
+                        <span class="card-meta-item">📚 ${escapeHtml(h.courseId?.name || '--')}</span>
+                        <span class="card-meta-item">👥 ${escapeHtml(h.classId?.name || '--')}</span>
                     </div>
                     <div class="card-meta">
-                        <span class="card-meta-item">📋 周期：${cycleText}</span>
+                        <span class="card-meta-item">📋 周期：${escapeHtml(cycleText)}</span>
                         <span class="card-meta-item">⭐ ${h.points || 0}积分</span>
                     </div>
                     <div class="card-meta">
                         <span class="card-meta-item">📅 截止：${formatDate(h.deadline)}</span>
                         ${h.hasCheckin ? '<span class="card-meta-item">✅ 含打卡</span>' : ''}
                     </div>
-                    <div class="card-desc">${h.content || ''}</div>
+                    <div class="card-desc">${escapeHtml(h.content || '')}</div>
                     <div style="margin-top:12px;display:flex;gap:8px">
-                        <button class="btn btn-primary btn-sm" onclick="showHomeworkDetail('${h._id}')">📋 查看详情</button>
-                        <button class="btn btn-outline btn-sm" onclick="showGradeModal('${h._id}')">✏️ 批改</button>
+                        <button class="btn btn-primary btn-sm" onclick="showHomeworkDetail('${escapeAttr(h._id)}')">📋 查看详情</button>
+                        <button class="btn btn-outline btn-sm" onclick="showGradeModal('${escapeAttr(h._id)}')">✏️ 批改</button>
                     </div>
                 </div>
             `;
@@ -691,18 +705,18 @@ async function showHomeworkDetail(homeworkId) {
     
     document.getElementById('homeworkDetailBody').innerHTML = `
         <div class="card-meta" style="margin-bottom:16px">
-            <span class="card-badge ${statusClass}">${status}</span>
-            <span class="card-meta-item">📚 ${h.courseId?.name || '--'}</span>
-            <span class="card-meta-item">👥 ${h.classId?.name || '--'}</span>
+            <span class="card-badge ${statusClass}">${escapeHtml(status)}</span>
+            <span class="card-meta-item">📚 ${escapeHtml(h.courseId?.name || '--')}</span>
+            <span class="card-meta-item">👥 ${escapeHtml(h.classId?.name || '--')}</span>
         </div>
         <div style="margin-bottom:16px">
             <div style="font-size:14px;font-weight:600;margin-bottom:8px">作业内容</div>
-            <div style="font-size:13px;color:#666;line-height:1.6">${h.content || '暂无内容'}</div>
+            <div style="font-size:13px;color:#666;line-height:1.6">${escapeHtml(h.content || '暂无内容')}</div>
         </div>
         <div style="margin-bottom:16px">
             <div style="font-size:14px;font-weight:600;margin-bottom:8px">作业设置</div>
             <div class="card-meta" style="flex-direction:column;gap:6px">
-                <span>📋 周期：${cycleText}</span>
+                <span>📋 周期：${escapeHtml(cycleText)}</span>
                 <span>⭐ 完成积分：${h.points || 0}</span>
                 <span>📅 截止时间：${formatDate(h.deadline)}</span>
                 ${h.hasCheckin ? `<span>✅ 含打卡任务（每次${h.checkinPoints || 0}积分）</span>` : ''}
@@ -724,17 +738,18 @@ async function showGradeModal(homeworkId) {
         submissionsHtml = submissions.map(s => {
             const gradeMap = { A: '优秀', B: '良好', C: '合格', D: '需改进' };
             const gradeClass = { A: 'badge-enrolling', B: 'badge-ongoing', C: 'badge-paused', D: 'badge-ended' };
+            const studentDisplayName = escapeHtml(s.studentName || s.studentId?.name || '学员');
             return `
                 <div class="submission-item">
                     <div style="flex:1">
-                        <div style="font-weight:500">${s.studentName || s.studentId?.name || '学员'}</div>
+                        <div style="font-weight:500">${studentDisplayName}</div>
                         <div style="font-size:12px;color:#999;margin-top:4px">提交时间：${formatDate(s.submittedAt)}</div>
                     </div>
                     ${s.grade ? `
-                        <span class="card-badge ${gradeClass[s.grade] || ''}">${s.grade} ${gradeMap[s.grade] || ''}</span>
-                        <button class="btn btn-outline btn-sm" onclick="openGradeModal('${s._id}','${s.studentName || '学员'}')">重新批改</button>
+                        <span class="card-badge ${gradeClass[s.grade] || ''}">${escapeHtml(s.grade)} ${escapeHtml(gradeMap[s.grade] || '')}</span>
+                        <button class="btn btn-outline btn-sm" onclick="openGradeModal('${escapeAttr(s._id)}','${escapeAttr(studentDisplayName)}')">重新批改</button>
                     ` : `
-                        <button class="btn btn-primary btn-sm" onclick="openGradeModal('${s._id}','${s.studentName || '学员'}')">去批改</button>
+                        <button class="btn btn-primary btn-sm" onclick="openGradeModal('${escapeAttr(s._id)}','${escapeAttr(studentDisplayName)}')">去批改</button>
                     `}
                 </div>
             `;

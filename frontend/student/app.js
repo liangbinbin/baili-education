@@ -170,7 +170,7 @@ function getRealId(id) {
 function showStatus(msg, type) {
   const el = document.getElementById('statusMsg');
   if (el) {
-    el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    el.innerHTML = `<div class="alert alert-${escapeAttr(type)}">${escapeHtml(msg)}</div>`;
     setTimeout(() => { el.innerHTML = ''; }, 5000);
   }
 }
@@ -527,12 +527,20 @@ function updateUserAvatar() {
   const avatar = AppState.currentUser?.avatar;
   
   if (avatar && avatar.startsWith('data:')) {
-    avatarEl.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;">`;
+    const img = document.createElement('img');
+    img.src = avatar;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    avatarEl.innerHTML = '';
+    avatarEl.appendChild(img);
     if (avatarPreview) avatarPreview.src = avatar;
     if (avatarEmoji) avatarEmoji.style.display = 'none';
   } else {
+    avatarEl.innerHTML = '';
     const genderEmoji = AppState.currentUser?.gender === 'female' ? '👧' : '👦';
-    avatarEl.innerHTML = `<span style="font-size:24px;">${genderEmoji}</span>`;
+    const span = document.createElement('span');
+    span.style.fontSize = '24px';
+    span.textContent = genderEmoji;
+    avatarEl.appendChild(span);
     if (avatarEmoji) avatarEmoji.style.display = 'inline';
   }
 }
