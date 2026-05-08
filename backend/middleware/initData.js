@@ -19,10 +19,10 @@ const sampleData = {
   ],
 
   courses: [
-    { name: '口才基础班', description: '培养孩子良好的语言表达能力', level: '入门', courseStatus: 'ongoing', courseType: 'main', courseTypeText: '主体系列课程' },
-    { name: '演讲进阶班', description: '提升演讲技巧，培养领袖气质', level: '进阶', courseStatus: 'ongoing', courseType: 'main', courseTypeText: '主体系列课程' },
-    { name: '主持特训营', description: '专业主持人培训课程', level: '高级', courseStatus: 'enrolling', courseType: 'elective', courseTypeText: '辅助选修课程' },
-    { name: '朗诵艺术班', description: '感受语言之美，传承经典文化', level: '中级', courseStatus: 'ongoing', courseType: 'elective', courseTypeText: '辅助选修课程' }
+    { name: '口才基础班', description: '培养孩子良好的语言表达能力', level: '入门', courseStatus: 'ongoing', courseType: 'main', courseTypeText: '主体系列课程', suitableGrade: ['grade1', 'grade2'] },
+    { name: '演讲进阶班', description: '提升演讲技巧，培养领袖气质', level: '进阶', courseStatus: 'ongoing', courseType: 'main', courseTypeText: '主体系列课程', suitableGrade: ['grade3', 'grade4', 'grade5'] },
+    { name: '主持特训营', description: '专业主持人培训课程', level: '高级', courseStatus: 'enrolling', courseType: 'elective', courseTypeText: '辅助选修课程', suitableGrade: ['grade4', 'grade5', 'grade6'] },
+    { name: '朗诵艺术班', description: '感受语言之美，传承经典文化', level: '中级', courseStatus: 'ongoing', courseType: 'elective', courseTypeText: '辅助选修课程', suitableGrade: ['grade2', 'grade3', 'grade4'] }
   ],
 
   classes: [
