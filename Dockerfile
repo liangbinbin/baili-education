@@ -6,9 +6,9 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app/backend
 
-COPY backend/package*.json ./
+COPY backend/package.json ./
 
-RUN npm ci --only=production && \
+RUN npm install --only=production && \
     npm cache clean --force
 
 FROM node:18-alpine
