@@ -204,10 +204,10 @@ function showToast(msg, type = 'info') {
 
 async function apiRequest(url, options = {}, params = {}) {
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const useProxy = !isLocalhost;
+  const forceMock = process.env.NODE_ENV === 'development' && !isLocalhost;
   
-  if (useProxy) {
-    console.log('代理环境检测，使用模拟数据');
+  if (forceMock) {
+    console.log('开发环境且非本地，使用模拟数据');
     return getMockResponse(url, options, params);
   }
   

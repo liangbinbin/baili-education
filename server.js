@@ -97,11 +97,17 @@ app.use('/api/checkin', checkinRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/batch', batchRoutes);
 
-const isStandaloneMode = process.env.STANDALONE_MODE === 'true';
+const isStandaloneMode = process.env.STANDALONE_MODE !== 'false';
 if (isStandaloneMode) {
-  app.use(express.static(path.join(__dirname, 'public')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  app.use(express.static(path.join(__dirname, 'frontend', 'student')));
+  app.use('/teacher', express.static(path.join(__dirname, 'frontend', 'teacher')));
+  
+  app.get('/student/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend', 'student', 'index.html'));
+  });
+  
+  app.get('/teacher/*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend', 'teacher', 'index.html'));
   });
 } else {
   app.use((req, res, next) => {
