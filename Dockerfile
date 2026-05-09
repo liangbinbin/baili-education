@@ -4,11 +4,11 @@
 
 FROM node:18-alpine AS builder
 
-WORKDIR /app
+WORKDIR /app/backend
 
-COPY backend/package*.json ./backend/
+COPY backend/package*.json ./
 
-RUN cd backend && npm ci --only=production && \
+RUN npm ci --only=production && \
     npm cache clean --force
 
 FROM node:18-alpine
@@ -21,7 +21,6 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 COPY --from=builder /app/backend/node_modules ./backend/node_modules
-COPY --from=builder /app/backend/package*.json ./backend/
 
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
