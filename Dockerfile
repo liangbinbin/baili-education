@@ -39,3 +39,6 @@ USER node
 ENTRYPOINT ["dumb-init", "--"]
 
 CMD ["node", "server.js"]
+
+# Ensure port 3000 is accessible
+RUN mkdir -p /app && chown -R node:node /app
