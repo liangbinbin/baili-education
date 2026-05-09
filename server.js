@@ -99,15 +99,15 @@ app.use('/api/batch', batchRoutes);
 
 const isStandaloneMode = process.env.STANDALONE_MODE !== 'false';
 if (isStandaloneMode) {
-  app.use(express.static(path.join(__dirname, 'frontend', 'student')));
+  app.use('/student', express.static(path.join(__dirname, 'frontend', 'student')));
   app.use('/teacher', express.static(path.join(__dirname, 'frontend', 'teacher')));
   
-  app.get('/student/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'student', 'index.html'));
+  app.get('/student', (req, res) => {
+    res.redirect('/student/index.html');
   });
   
-  app.get('/teacher/*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'teacher', 'index.html'));
+  app.get('/teacher', (req, res) => {
+    res.redirect('/teacher/index.html');
   });
 } else {
   app.use((req, res, next) => {
