@@ -59,4 +59,36 @@ router.put('/info',
   }
 );
 
+router.get('/debug', async (req, res) => {
+  const users = await userService.find();
+  res.success({
+    count: users.length,
+    users: users.map(u => ({
+      phone: u.phone,
+      name: u.name,
+      role: u.role,
+      passwordLength: u.password.length,
+      passwordEncrypted: u.password.startsWith('$2a$')
+    }))
+  });
+});
+
+router.get('/debug/password', async (req, res) => {
+  const { phone, password } = req.query;
+  const user = await userService.findOne({ phone });
+  
+  if (!user) {
+    return res.success({ found: false, message: '用户不存在' });
+  }
+  
+  const match = await userService.comparePassword(password, user.password);
+  res.success({
+    found: true,
+    phone: user.phone,
+    passwordLength: user.password.length,
+    passwordEncrypted: user.password.startsWith('$2a$'),
+    passwordMatch: match
+  });
+});
+
 module.exports = router;

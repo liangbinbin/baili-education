@@ -51,13 +51,8 @@ const initTestData = async () => {
 
     console.log('🔄 初始化测试数据...');
 
-    const encryptedUsers = await Promise.all(
-      sampleData.users.map(async (u) => ({
-        ...u,
-        password: await encryptPassword(u.password)
-      }))
-    );
-    const users = await Promise.all(encryptedUsers.map(u => userService.create(u)));
+    const usersToCreate = sampleData.users.map(u => ({ ...u }));
+    const users = await Promise.all(usersToCreate.map(u => userService.create(u)));
     const [admin, teacher1, teacher2, ...students] = users;
 
     const courses = await Promise.all(sampleData.courses.map(c => courseService.create(c)));

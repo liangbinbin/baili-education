@@ -71,7 +71,8 @@ router.post('/register',
         phone,
         password,
         name,
-        role
+        role,
+        isActive: true
       });
 
       const token = generateToken(user._id);

@@ -1,0 +1,21 @@
+{
+  "name": "baili-education-backend",
+  "runtime": "node",
+  "region": "singapore",
+  "startCommand": "node server.js",
+  "buildCommand": "npm install",
+  "healthCheckPath": "/health/live",
+  "envVars": {
+    "NODE_ENV": "production",
+    "PORT": {
+      "sync": false
+    },
+    "STANDALONE_MODE": "true",
+    "MONGODB_URI": {
+      "sync": false
+    },
+    "JWT_SECRET": {
+      "sync": false
+    }
+  }
+}

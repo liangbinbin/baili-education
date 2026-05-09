@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>百里口才 | 教师端</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <div class="header-bg"></div>
+            <div class="header-content">
+                <h1 class="brand-title">百里口才 | 百里演说</h1>
+                <p class="brand-subtitle">让演说成为孩子自信生长的力量！</p>
+                <div class="user-info" id="userInfo" onclick="showModal('profileModal')">
+                    <div class="user-avatar">👨‍🏫</div>
+                    <div class="user-detail">
+                        <div class="user-name" id="userName">张老师</div>
+                        <div class="user-role">教师</div>
+                    </div>
+                    <div class="user-arrow">›</div>
+                </div>
+            </div>
+        </header>
+
+        <nav class="tab-nav">
+            <div class="tab-scroll">
+                <button class="tab-btn active" data-tab="courses" onclick="switchTab('courses')">📚 课程</button>
+                <button class="tab-btn" data-tab="classes" onclick="switchTab('classes')">👥 班级</button>
+                <button class="tab-btn" data-tab="homework" onclick="switchTab('homework')">📝 作业</button>
+                <button class="tab-btn" data-tab="checkins" onclick="switchTab('checkins')">📅 打卡</button>
+                <button class="tab-btn" data-tab="points" onclick="switchTab('points')">⭐ 积分</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- 课程管理 -->
+            <section class="tab-panel active" id="courses">
+                <div class="panel-header">
+                    <h2>课程管理</h2>
+                </div>
+                <div class="filter-bar">
+                    <select id="courseStatusFilter" onchange="loadCourses()">
+                        <option value="">全部状态</option>
+                        <option value="enrolling">报名中</option>
+                        <option value="ongoing">进行中</option>
+                        <option value="ended">已结束</option>
+                    </select>
+                    <select id="courseTypeFilter" onchange="loadCourses()">
+                        <option value="">全部类型</option>
+                        <option value="main">主体系列课程</option>
+                        <option value="elective">辅助选修课程</option>
+                        <option value="other">其他课程</option>
+                    </select>
+                </div>
+                <div class="card-list" id="courseList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </section>
+
+            <!-- 班级管理 -->
+            <section class="tab-panel" id="classes">
+                <div class="panel-header">
+                    <h2>班级管理</h2>
+                </div>
+                <div class="filter-bar">
+                    <select id="classCourseFilter" onchange="loadClasses()">
+                        <option value="">全部课程</option>
+                    </select>
+                    <select id="classStatusFilter" onchange="loadClasses()">
+                        <option value="">全部状态</option>
+                        <option value="ongoing">正常</option>
+                        <option value="paused">停课</option>
+                        <option value="ended">结班</option>
+                    </select>
+                </div>
+                <div class="card-list" id="classList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </section>
+
+            <!-- 作业管理 -->
+            <section class="tab-panel" id="homework">
+                <div class="panel-header">
+                    <h2>作业管理</h2>
+                    <button class="btn btn-primary" onclick="showModal('homeworkModal')">+ 发布作业</button>
+                </div>
+                <div class="filter-bar">
+                    <select id="hwClassFilter" onchange="loadHomeworks()">
+                        <option value="">全部班级</option>
+                    </select>
+                    <select id="hwStatusFilter" onchange="loadHomeworks()">
+                        <option value="">全部状态</option>
+                        <option value="active">进行中</option>
+                        <option value="expired">已截止</option>
+                    </select>
+                </div>
+                <div class="card-list" id="homeworkList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </section>
+
+            <!-- 打卡管理 -->
+            <section class="tab-panel" id="checkins">
+                <div class="panel-header">
+                    <h2>打卡管理</h2>
+                </div>
+                <div class="filter-bar">
+                    <select id="checkinHwFilter" onchange="loadCheckinStats()">
+                        <option value="">全部作业</option>
+                    </select>
+                </div>
+                <div class="stats-cards" id="checkinStats">
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">总打卡次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">今日打卡</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">平均连续天数</div>
+                    </div>
+                </div>
+                <div class="card-list" id="checkinList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </section>
+
+            <!-- 积分管理 -->
+            <section class="tab-panel" id="points">
+                <div class="panel-header">
+                    <h2>积分管理</h2>
+                    <button class="btn btn-primary" onclick="showModal('pointsModal')">⚙ 调整积分</button>
+                </div>
+                <div class="stats-cards" id="pointsStats">
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">学员总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">积分发放总量</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">--</div>
+                        <div class="stat-label">积分消耗总量</div>
+                    </div>
+                </div>
+                <div class="filter-bar">
+                    <select id="pointsClassFilter" onchange="loadPointsRanking()">
+                        <option value="">全部班级</option>
+                    </select>
+                </div>
+                <div class="card-list" id="pointsRankingList">
+                    <div class="loading">加载中...</div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 课程新建弹窗 -->
+        <div class="modal-overlay" id="courseModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>新建课程</h3>
+                    <button class="modal-close" onclick="hideModal('courseModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>课程名称 <span class="required">*</span></label>
+                        <input type="text" id="courseName" placeholder="请输入课程名称">
+                    </div>
+                    <div class="form-group">
+                        <label>课程描述</label>
+                        <textarea id="courseDesc" placeholder="请输入课程描述" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>课程级别</label>
+                            <input type="text" id="courseLevel" placeholder="如：三年级、初级">
+                        </div>
+                        <div class="form-group">
+                            <label>课程类型</label>
+                            <select id="courseType">
+                                <option value="main">主体系列课程</option>
+                                <option value="elective">辅助选修课程</option>
+                                <option value="other">其他课程</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>适合年级</label>
+                        <div class="checkbox-group" id="gradeCheckboxes">
+                            <label class="checkbox-item"><input type="checkbox" value="grade1"> 一年级</label>
+                            <label class="checkbox-item"><input type="checkbox" value="grade2"> 二年级</label>
+                            <label class="checkbox-item"><input type="checkbox" value="grade3"> 三年级</label>
+                            <label class="checkbox-item"><input type="checkbox" value="grade4"> 四年级</label>
+                            <label class="checkbox-item"><input type="checkbox" value="grade5"> 五年级</label>
+                            <label class="checkbox-item"><input type="checkbox" value="grade6"> 六年级</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>课程简介</label>
+                        <input type="text" id="courseIntro" placeholder="一句话介绍课程">
+                    </div>
+                    <div class="form-group">
+                        <label>课程状态</label>
+                        <select id="courseStatus">
+                            <option value="enrolling">报名中</option>
+                            <option value="ongoing">进行中</option>
+                            <option value="ended">已结束</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideModal('courseModal')">取消</button>
+                    <button class="btn btn-primary" onclick="createCourse()">创建课程</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 班级新建弹窗 -->
+        <div class="modal-overlay" id="classModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>新建班级</h3>
+                    <button class="modal-close" onclick="hideModal('classModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>所属课程 <span class="required">*</span></label>
+                        <select id="classCourseId">
+                            <option value="">请选择课程</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>班级名称 <span class="required">*</span></label>
+                        <input type="text" id="className" placeholder="请输入班级名称">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>班级类型</label>
+                            <select id="classType">
+                                <option value="formal">正式班</option>
+                                <option value="temporary">临时班</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>教室</label>
+                            <input type="text" id="classroom" placeholder="如：101教室">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>开始日期</label>
+                            <input type="date" id="classStartDate">
+                        </div>
+                        <div class="form-group">
+                            <label>结束日期</label>
+                            <input type="date" id="classEndDate">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>上课时间</label>
+                        <div id="scheduleList">
+                            <div class="schedule-row">
+                                <select class="schedule-day">
+                                    <option value="1">周一</option>
+                                    <option value="2">周二</option>
+                                    <option value="3">周三</option>
+                                    <option value="4">周四</option>
+                                    <option value="5">周五</option>
+                                    <option value="6">周六</option>
+                                    <option value="7">周日</option>
+                                </select>
+                                <input type="time" class="schedule-start" value="09:00">
+                                <span>-</span>
+                                <input type="time" class="schedule-end" value="10:30">
+                                <button class="btn-icon btn-remove" onclick="removeScheduleRow(this)">✕</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-text" onclick="addScheduleRow()">+ 添加时间段</button>
+                    </div>
+                    <div class="form-group">
+                        <label>班主任</label>
+                        <select id="headTeacherId">
+                            <option value="">请选择班主任</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideModal('classModal')">取消</button>
+                    <button class="btn btn-primary" onclick="createClass()">创建班级</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作业发布弹窗 -->
+        <div class="modal-overlay" id="homeworkModal">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <h3>发布作业</h3>
+                    <button class="modal-close" onclick="hideModal('homeworkModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>作业标题 <span class="required">*</span></label>
+                        <input type="text" id="hwTitle" placeholder="请输入作业标题">
+                    </div>
+                    <div class="form-group">
+                        <label>作业内容 <span class="required">*</span></label>
+                        <textarea id="hwContent" placeholder="请输入作业内容描述" rows="4"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>发布班级 <span class="required">*</span></label>
+                        <div class="checkbox-group" id="hwClassCheckboxes">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>发布时间</label>
+                            <input type="datetime-local" id="hwPublishTime">
+                        </div>
+                        <div class="form-group">
+                            <label>截止时间 <span class="required">*</span></label>
+                            <input type="datetime-local" id="hwDeadline">
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+                    <h4 class="section-title">周期与频次</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>周期类型</label>
+                            <select id="hwCycleType" onchange="toggleCycleDuration()">
+                                <option value="single">单周期（不分自然日）</option>
+                                <option value="multi">多周期</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="cycleDurationGroup" style="display:none">
+                            <label>周期天数</label>
+                            <input type="number" id="hwCycleDuration" min="1" value="3" placeholder="几天为一个周期">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>每周期完成次数</label>
+                        <input type="number" id="hwFrequency" min="1" value="1" placeholder="每个周期需完成几次">
+                    </div>
+                    <div class="section-divider"></div>
+                    <h4 class="section-title">积分设置</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>完成积分</label>
+                            <input type="number" id="hwPoints" min="0" value="10" placeholder="完成作业获得积分">
+                        </div>
+                        <div class="form-group">
+                            <label>优秀作业加分上限</label>
+                            <input type="number" id="hwBonusMax" min="0" value="20" placeholder="批改时可额外加分">
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+                    <h4 class="section-title">打卡属性</h4>
+                    <div class="form-group">
+                        <label class="switch-label">
+                            <input type="checkbox" id="hwHasCheckin" onchange="toggleCheckinSettings()">
+                            <span>启用打卡属性</span>
+                        </label>
+                    </div>
+                    <div id="checkinSettings" style="display:none">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>打卡奖励积分</label>
+                                <input type="number" id="hwCheckinPoints" min="0" value="5" placeholder="分享朋友圈积分">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>连续打卡奖励（仅周期性作业）</label>
+                            <div id="consecutiveRewardsList">
+                                <div class="reward-row">
+                                    <input type="number" class="reward-times" min="1" placeholder="满足次数" value="3">
+                                    <span>次，奖励</span>
+                                    <input type="number" class="reward-points" min="1" placeholder="积分" value="10">
+                                    <span>积分</span>
+                                    <button class="btn-icon btn-remove" onclick="removeRewardRow(this)">✕</button>
+                                </div>
+                            </div>
+                            <button class="btn btn-text" onclick="addRewardRow()">+ 添加奖励层级</button>
+                        </div>
+                    </div>
+                    <div class="section-divider"></div>
+                    <h4 class="section-title">分享设置</h4>
+                    <div class="form-group">
+                        <label>分享文案</label>
+                        <input type="text" id="hwShareText" placeholder="分享到朋友圈时的文案">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideModal('homeworkModal')">取消</button>
+                    <button class="btn btn-primary" onclick="createHomework()">发布作业</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 作业批改弹窗 -->
+        <div class="modal-overlay" id="gradeModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>批改作业</h3>
+                    <button class="modal-close" onclick="hideModal('gradeModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="submission-info" id="submissionInfo"></div>
+                    <div class="form-group">
+                        <label>评级</label>
+                        <div class="grade-options">
+                            <button class="grade-btn" data-grade="A" onclick="selectGrade(this)">A 优秀</button>
+                            <button class="grade-btn" data-grade="B" onclick="selectGrade(this)">B 良好</button>
+                            <button class="grade-btn" data-grade="C" onclick="selectGrade(this)">C 合格</button>
+                            <button class="grade-btn" data-grade="D" onclick="selectGrade(this)">D 需改进</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>文字点评</label>
+                        <textarea id="gradeComment" placeholder="请输入点评内容" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>额外加分</label>
+                        <input type="number" id="gradeBonusPoints" min="0" value="0" placeholder="优秀作业额外加分">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideModal('gradeModal')">取消</button>
+                    <button class="btn btn-primary" onclick="submitGrade()">确认批改</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 积分调整弹窗 -->
+        <div class="modal-overlay" id="pointsModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>调整积分</h3>
+                    <button class="modal-close" onclick="hideModal('pointsModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>选择学员 <span class="required">*</span></label>
+                        <select id="pointsStudentId">
+                            <option value="">请选择学员</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>操作类型</label>
+                        <div class="radio-group">
+                            <label class="radio-item"><input type="radio" name="pointsType" value="earn" checked> 增加积分</label>
+                            <label class="radio-item"><input type="radio" name="pointsType" value="deduct"> 扣除积分</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>积分数量 <span class="required">*</span></label>
+                        <input type="number" id="pointsAmount" min="1" placeholder="请输入积分数量">
+                    </div>
+                    <div class="form-group">
+                        <label>原因说明 <span class="required">*</span></label>
+                        <input type="text" id="pointsReason" placeholder="请输入调整原因">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideModal('pointsModal')">取消</button>
+                    <button class="btn btn-primary" onclick="adjustPoints()">确认调整</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 课程详情弹窗 -->
+        <div class="modal-overlay" id="courseDetailModal">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <h3 id="courseDetailTitle">课程详情</h3>
+                    <button class="modal-close" onclick="hideModal('courseDetailModal')">&times;</button>
+                </div>
+                <div class="modal-body" id="courseDetailBody">
+                </div>
+            </div>
+        </div>
+
+        <!-- 班级详情弹窗 -->
+        <div class="modal-overlay" id="classDetailModal">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <h3 id="classDetailTitle">班级详情</h3>
+                    <button class="modal-close" onclick="hideModal('classDetailModal')">&times;</button>
+                </div>
+                <div class="modal-body" id="classDetailBody">
+                </div>
+            </div>
+        </div>
+
+        <!-- 作业详情/统计弹窗 -->
+        <div class="modal-overlay" id="homeworkDetailModal">
+            <div class="modal modal-lg">
+                <div class="modal-header">
+                    <h3 id="homeworkDetailTitle">作业详情</h3>
+                    <button class="modal-close" onclick="hideModal('homeworkDetailModal')">&times;</button>
+                </div>
+                <div class="modal-body" id="homeworkDetailBody">
+                </div>
+            </div>
+        </div>
+
+        <!-- 教师个人信息弹窗 -->
+        <div class="modal-overlay" id="profileModal">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>个人信息</h3>
+                    <button class="modal-close" onclick="hideModal('profileModal')">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="profile-avatar-section">
+                        <div class="profile-avatar" id="profileAvatar" onclick="triggerAvatarUpload()">
+                            👨‍🏫
+                            <div class="avatar-upload-hint">点击更换头像</div>
+                        </div>
+                        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+                        <div class="avatar-actions" id="avatarActions" style="display:none">
+                            <button class="btn btn-primary btn-sm" onclick="saveAvatar()">保存头像</button>
+                            <button class="btn btn-secondary btn-sm" onclick="cancelAvatarUpload()">取消</button>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <div class="form-group">
+                        <label>绑定微信</label>
+                        <div class="wechat-status" id="wechatStatus">
+                            <span class="wechat-icon">💬</span>
+                            <span class="wechat-text">已绑定</span>
+                        </div>
+                        <p class="form-hint">如需解绑，请联系学校管理员</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>手机号码（唯一凭证，不可修改）</label>
+                        <input type="text" id="profilePhone" readonly placeholder="13800138000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>姓名</label>
+                        <input type="text" id="profileName" readonly placeholder="请输入姓名">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>性别</label>
+                            <input type="text" id="profileGender" readonly placeholder="男">
+                        </div>
+                        <div class="form-group">
+                            <label>入职日期</label>
+                            <input type="text" id="profileJoinDate" readonly placeholder="2024-01-01">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>职位</label>
+                            <input type="text" id="profilePosition" readonly placeholder="教师">
+                        </div>
+                        <div class="form-group">
+                            <label>状态</label>
+                            <input type="text" id="profileStatus" readonly placeholder="正常">
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <p class="form-hint" style="color: var(--text-light); text-align: center;">
+                        除头像外，其他信息需联系管理员在管理端修改
+                    </p>
+
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="hideModal('profileModal')">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div class="toast-container" id="toastContainer"></div>
+        
+        <!-- 底部水印 -->
+        <div class="watermark">
+            <span class="watermark-text">有文化·能思辨·会演说</span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

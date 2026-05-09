@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百里教育管理系统</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: white;
+      font-size: 32px;
+      margin-bottom: 50px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .portal-grid {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .portal-card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 60px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+      text-decoration: none;
+      color: #333;
+    }
+    .portal-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+    }
+    .portal-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+    .portal-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .portal-desc {
+      color: #666;
+      font-size: 14px;
+    }
+    .student-card:hover { border: 3px solid #4CAF50; }
+    .teacher-card:hover { border: 3px solid #2196F3; }
+    .footer {
+      position: fixed;
+      bottom: 20px;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🎓</div>
+    <h1>百里教育管理系统</h1>
+    <div class="portal-grid">
+      <a href="/student/index.html" class="portal-card student-card">
+        <div class="portal-icon">📚</div>
+        <div class="portal-title">学员端</div>
+        <div class="portal-desc">查看作业、提交打卡、积分商城</div>
+      </a>
+      <a href="/teacher/index.html" class="portal-card teacher-card">
+        <div class="portal-icon">👨‍🏫</div>
+        <div class="portal-title">教师端</div>
+        <div class="portal-desc">作业管理、班级管理、学生查看</div>
+      </a>
+    </div>
+  </div>
+  <div class="footer">百里教育 © 2024</div>
+</body>
+</html>

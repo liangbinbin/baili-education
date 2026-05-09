@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config/app');
 const responseMiddleware = require('./middleware/response');
@@ -96,9 +97,17 @@ app.use('/api/checkin', checkinRoutes);
 app.use('/api/points', pointsRoutes);
 app.use('/api/batch', batchRoutes);
 
-app.use((req, res, next) => {
-  res.error(404, 'ROUTE_NOT_FOUND', '请求的接口不存在');
-});
+const isStandaloneMode = process.env.STANDALONE_MODE === 'true';
+if (isStandaloneMode) {
+  app.use(express.static(path.join(__dirname, 'public')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+} else {
+  app.use((req, res, next) => {
+    res.error(404, 'ROUTE_NOT_FOUND', '请求的接口不存在');
+  });
+}
 
 app.use(errorHandler);
 
