@@ -2,7 +2,9 @@
   "name": "baili-education",
   "version": "1.0.0",
   "description": "百里教育管理系统",
+  "main": "backend/server.js",
   "scripts": {
+    "install": "cd backend && npm ci --only=production",
     "start": "cd backend && node server.js",
     "build": "cd backend && npm ci --only=production"
   },
