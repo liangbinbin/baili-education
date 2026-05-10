@@ -1,0 +1,201 @@
+{
+    "easycom": {
+        "autoscan": true,
+        "custom": {
+            "^Button": "@/components/common/button.vue",
+            "^Card": "@/components/common/card.vue",
+            "^Modal": "@/components/common/modal.vue",
+            "^Navbar": "@/components/common/navbar.vue",
+            "^Tabs": "@/components/common/tabs.vue",
+            "^Toast": "@/components/common/toast.vue",
+            "^Loading": "@/components/common/loading.vue",
+            "^EmptyState": "@/components/common/empty-state.vue",
+            "^TaskCard": "@/components/business/task-card.vue",
+            "^SubmitRecord": "@/components/business/submit-record.vue",
+            "^SharePanel": "@/components/business/share-panel.vue",
+            "^PointsRule": "@/components/business/points-rule.vue",
+            "^CourseCard": "@/components/business/course-card.vue",
+            "^CheckinCalendar": "@/components/business/checkin-calendar.vue",
+            "^PointsRecord": "@/components/business/points-record.vue",
+            "^RankingItem": "@/components/business/ranking-item.vue"
+        }
+    },
+    "pages": [
+        {
+            "path": "pages/login/index",
+            "style": {
+                "navigationBarTitleText": "登录",
+                "navigationStyle": "custom"
+            }
+        },
+        {
+            "path": "pages/login/bind-wechat",
+            "style": {
+                "navigationBarTitleText": "绑定微信"
+            }
+        },
+        {
+            "path": "pages/login/switch-account",
+            "style": {
+                "navigationBarTitleText": "切换账号"
+            }
+        },
+        {
+            "path": "pages/student/home",
+            "style": {
+                "navigationBarTitleText": "百里口才",
+                "navigationStyle": "custom"
+            }
+        },
+        {
+            "path": "pages/student/course",
+            "style": {
+                "navigationBarTitleText": "课程"
+            }
+        },
+        {
+            "path": "pages/student/course-detail",
+            "style": {
+                "navigationBarTitleText": "课程详情"
+            }
+        },
+        {
+            "path": "pages/student/class",
+            "style": {
+                "navigationBarTitleText": "班级"
+            }
+        },
+        {
+            "path": "pages/student/class-detail",
+            "style": {
+                "navigationBarTitleText": "班级详情"
+            }
+        },
+        {
+            "path": "pages/student/task",
+            "style": {
+                "navigationBarTitleText": "任务"
+            }
+        },
+        {
+            "path": "pages/student/task-detail",
+            "style": {
+                "navigationBarTitleText": "任务详情"
+            }
+        },
+        {
+            "path": "pages/student/task-submit",
+            "style": {
+                "navigationBarTitleText": "提交任务"
+            }
+        },
+        {
+            "path": "pages/student/task-records",
+            "style": {
+                "navigationBarTitleText": "提交记录"
+            }
+        },
+        {
+            "path": "pages/student/points",
+            "style": {
+                "navigationBarTitleText": "积分"
+            }
+        },
+        {
+            "path": "pages/student/ranking",
+            "style": {
+                "navigationBarTitleText": "排行榜"
+            }
+        },
+        {
+            "path": "pages/student/profile",
+            "style": {
+                "navigationBarTitleText": "个人中心"
+            }
+        },
+        {
+            "path": "pages/teacher/home",
+            "style": {
+                "navigationBarTitleText": "百里口才"
+            }
+        },
+        {
+            "path": "pages/teacher/course",
+            "style": {
+                "navigationBarTitleText": "课程"
+            }
+        },
+        {
+            "path": "pages/teacher/class",
+            "style": {
+                "navigationBarTitleText": "班级"
+            }
+        },
+        {
+            "path": "pages/teacher/task",
+            "style": {
+                "navigationBarTitleText": "任务管理"
+            }
+        },
+        {
+            "path": "pages/teacher/task-publish",
+            "style": {
+                "navigationBarTitleText": "发布任务"
+            }
+        },
+        {
+            "path": "pages/teacher/task-grade",
+            "style": {
+                "navigationBarTitleText": "批改任务"
+            }
+        },
+        {
+            "path": "pages/teacher/schedule",
+            "style": {
+                "navigationBarTitleText": "排课"
+            }
+        },
+        {
+            "path": "pages/teacher/points",
+            "style": {
+                "navigationBarTitleText": "积分"
+            }
+        },
+        {
+            "path": "pages/teacher/profile",
+            "style": {
+                "navigationBarTitleText": "个人中心"
+            }
+        }
+    ],
+    "globalStyle": {
+        "navigationBarTextStyle": "black",
+        "navigationBarTitleText": "百里口才",
+        "navigationBarBackgroundColor": "#F8F8F8",
+        "backgroundColor": "#F8F8F8"
+    },
+    "tabBar": {
+        "color": "#999999",
+        "selectedColor": "#FF6B35",
+        "backgroundColor": "#FFFFFF",
+        "borderStyle": "black",
+        "list": [
+            {
+                "pagePath": "pages/student/home",
+                "text": "首页"
+            },
+            {
+                "pagePath": "pages/student/task",
+                "text": "任务"
+            },
+            {
+                "pagePath": "pages/student/points",
+                "text": "积分"
+            },
+            {
+                "pagePath": "pages/student/profile",
+                "text": "我的"
+            }
+        ]
+    }
+}

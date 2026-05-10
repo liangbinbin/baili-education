@@ -1,0 +1,40 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+page {
+  background-color: $color-bg-page;
+  font-size: $font-size-body;
+  color: $color-text-primary;
+  line-height: 1.5;
+}
+
+view, text, image, button {
+  box-sizing: border-box;
+}
+
+button {
+  border: none;
+  outline: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+  font-size: inherit;
+}
+
+button::after {
+  border: none;
+}
+
+input {
+  border: none;
+  outline: none;
+  background: none;
+}
+
+image {
+  display: block;
+}
