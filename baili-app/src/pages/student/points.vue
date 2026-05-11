@@ -5,7 +5,7 @@
     <view class="points-card">
       <view class="points-header">
         <text class="points-label">当前积分</text>
-        <text class="points-value">{{ stats.currentPoints }}</text>
+        <text class="points-value">{{ stats.current }}</text>
       </view>
       <view class="points-stats">
         <view class="stat-item">
@@ -14,8 +14,8 @@
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item">
-          <text class="stat-value">{{ stats.totalSpent }}</text>
-          <text class="stat-label">累计消耗</text>
+          <text class="stat-value">{{ stats.totalDeducted }}</text>
+          <text class="stat-label">累计扣除</text>
         </view>
       </view>
     </view>

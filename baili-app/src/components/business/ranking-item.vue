@@ -1,5 +1,5 @@
 <template>
-  <view class="ranking-item" :class="{ 'ranking-item--top': rank <= 3 }">
+  <view class="ranking-item" :class="{ 'ranking-item--top': rank <= 3, 'ranking-item--me': isMe }">
     <view class="ranking-item__rank" :class="`ranking-item__rank--${rank}`">
       <text v-if="rank <= 3">{{ getRankIcon(rank) }}</text>
       <text v-else>{{ rank }}</text>
@@ -10,7 +10,7 @@
     </view>
     <view class="ranking-item__info">
       <text class="ranking-item__name">{{ name }}</text>
-      <text v-if="description" class="ranking-item__desc">{{ description }}</text>
+      <text v-if="isMe" class="ranking-item__me-badge">我</text>
     </view>
     <view class="ranking-item__score">
       <text class="ranking-item__score-value">{{ score }}</text>
@@ -33,10 +33,6 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  description: {
-    type: String,
-    default: ''
-  },
   score: {
     type: Number,
     default: 0
@@ -44,6 +40,10 @@ const props = defineProps({
   unit: {
     type: String,
     default: '分'
+  },
+  isMe: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -68,6 +68,11 @@ const getRankIcon = (rank) => {
 
   &--top {
     box-shadow: $shadow-card;
+  }
+
+  &--me {
+    background: linear-gradient(135deg, $color-primary-light 0%, rgba($color-primary, 0.05) 100%);
+    border: 2rpx solid $color-primary-light;
   }
 
   &__rank {
@@ -113,23 +118,27 @@ const getRankIcon = (rank) => {
   &__info {
     flex: 1;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
   }
 
   &__name {
-    display: block;
     font-size: $font-size-h3;
     font-weight: $font-weight-semibold;
     color: $color-text-primary;
-    margin-bottom: $spacing-xs;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  &__desc {
-    display: block;
+  &__me-badge {
     font-size: $font-size-caption;
-    color: $color-text-secondary;
+    padding: 2rpx 8rpx;
+    background: $color-primary;
+    color: $color-text-white;
+    border-radius: $radius-tag;
+    flex-shrink: 0;
   }
 
   &__score {

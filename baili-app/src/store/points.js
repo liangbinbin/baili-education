@@ -3,28 +3,26 @@ import { ref, computed } from 'vue'
 import api from '@/api/points'
 
 export const usePointsStore = defineStore('points', () => {
-  // 状态
   const stats = ref({
-    currentPoints: 0,
+    current: 0,
     totalEarned: 0,
-    totalSpent: 0,
-    weekRecords: []
+    totalDeducted: 0
   })
   const records = ref([])
+  const recordsPagination = ref(null)
   const ranking = ref({
+    period: 'week',
+    periodText: '本周榜',
+    list: [],
     myRank: null,
-    topThree: [],
-    list: []
+    pagination: null
   })
-  const rules = ref([])
   const loading = ref(false)
-  const rankingType = ref('week')
+  const rankingPeriod = ref('week')
   const rankingScope = ref('class')
 
-  // 计算属性
-  const currentPoints = computed(() => stats.value.currentPoints)
+  const currentPoints = computed(() => stats.value.current)
 
-  // 方法
   const fetchStats = async () => {
     loading.value = true
     try {
@@ -41,7 +39,8 @@ export const usePointsStore = defineStore('points', () => {
     loading.value = true
     try {
       const res = await api.records(params)
-      records.value = res.data.list || res.data
+      records.value = res.data.list || []
+      recordsPagination.value = res.data.pagination || null
     } catch (error) {
       uni.showToast({ title: '获取积分记录失败', icon: 'none' })
     } finally {
@@ -53,7 +52,7 @@ export const usePointsStore = defineStore('points', () => {
     loading.value = true
     try {
       const res = await api.ranking({
-        type: rankingType.value,
+        period: rankingPeriod.value,
         scope: rankingScope.value,
         ...params
       })
@@ -65,20 +64,8 @@ export const usePointsStore = defineStore('points', () => {
     }
   }
 
-  const fetchRules = async () => {
-    loading.value = true
-    try {
-      const res = await api.rules()
-      rules.value = res.data.list || res.data
-    } catch (error) {
-      uni.showToast({ title: '获取积分规则失败', icon: 'none' })
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const setRankingType = (type) => {
-    rankingType.value = type
+  const setRankingPeriod = (period) => {
+    rankingPeriod.value = period
     fetchRanking()
   }
 
@@ -87,34 +74,19 @@ export const usePointsStore = defineStore('points', () => {
     fetchRanking()
   }
 
-  const doShareReward = async (data) => {
-    try {
-      const res = await api.shareReward(data)
-      await fetchStats()
-      return res
-    } catch (error) {
-      // 静默处理
-    }
-  }
-
   return {
-    // 状态
     stats,
     records,
+    recordsPagination,
     ranking,
-    rules,
     loading,
-    rankingType,
+    rankingPeriod,
     rankingScope,
-    // 计算属性
     currentPoints,
-    // 方法
     fetchStats,
     fetchRecords,
     fetchRanking,
-    fetchRules,
-    setRankingType,
-    setRankingScope,
-    doShareReward
+    setRankingPeriod,
+    setRankingScope
   }
 })

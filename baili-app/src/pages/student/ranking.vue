@@ -7,8 +7,8 @@
         v-for="tab in tabList"
         :key="tab.value"
         class="tab-item"
-        :class="{ active: rankingType === tab.value }"
-        @click="setRankingType(tab.value)"
+        :class="{ active: rankingPeriod === tab.value }"
+        @click="setRankingPeriod(tab.value)"
       >
         {{ tab.label }}
       </view>
@@ -27,42 +27,42 @@
     </view>
 
     <view class="top-three">
-      <view class="top-item second" v-if="ranking.topThree[1]">
+      <view class="top-item second" v-if="topThreeList[1]">
         <text class="top-trophy">🥈</text>
-        <image class="top-avatar" :src="ranking.topThree[1].avatar || defaultAvatar" mode="aspectFill" />
-        <text class="top-name">{{ ranking.topThree[1].name }}</text>
-        <text class="top-points">{{ ranking.topThree[1].points }}分</text>
+        <image class="top-avatar" :src="topThreeList[1].studentId?.avatar || defaultAvatar" mode="aspectFill" />
+        <text class="top-name">{{ topThreeList[1].studentId?.name }}</text>
+        <text class="top-points">{{ topThreeList[1].points }}分</text>
       </view>
 
-      <view class="top-item first" v-if="ranking.topThree[0]">
+      <view class="top-item first" v-if="topThreeList[0]">
         <text class="top-trophy">🥇</text>
-        <image class="top-avatar" :src="ranking.topThree[0].avatar || defaultAvatar" mode="aspectFill" />
-        <text class="top-name">{{ ranking.topThree[0].name }}</text>
-        <text class="top-points">{{ ranking.topThree[0].points }}分</text>
+        <image class="top-avatar" :src="topThreeList[0].studentId?.avatar || defaultAvatar" mode="aspectFill" />
+        <text class="top-name">{{ topThreeList[0].studentId?.name }}</text>
+        <text class="top-points">{{ topThreeList[0].points }}分</text>
       </view>
 
-      <view class="top-item third" v-if="ranking.topThree[2]">
+      <view class="top-item third" v-if="topThreeList[2]">
         <text class="top-trophy">🥉</text>
-        <image class="top-avatar" :src="ranking.topThree[2].avatar || defaultAvatar" mode="aspectFill" />
-        <text class="top-name">{{ ranking.topThree[2].name }}</text>
-        <text class="top-points">{{ ranking.topThree[2].points }}分</text>
+        <image class="top-avatar" :src="topThreeList[2].studentId?.avatar || defaultAvatar" mode="aspectFill" />
+        <text class="top-name">{{ topThreeList[2].studentId?.name }}</text>
+        <text class="top-points">{{ topThreeList[2].points }}分</text>
       </view>
     </view>
 
     <view class="my-rank" v-if="ranking.myRank">
       <text class="my-rank-number">🏅 {{ ranking.myRank.rank }}</text>
-      <text class="my-rank-name">{{ ranking.myRank.name }}</text>
       <text class="my-rank-points">{{ ranking.myRank.points }}分</text>
     </view>
 
     <view class="ranking-list">
       <RankingItem
-        v-for="(item, index) in ranking.list"
-        :key="item.id || index"
-        :rank="index + 4"
-        :name="item.name"
-        :avatar="item.avatar"
+        v-for="(item, index) in restList"
+        :key="item._id || index"
+        :rank="item.rank"
+        :name="item.studentId?.name"
+        :avatar="item.studentId?.avatar"
         :score="item.points"
+        :isMe="item.isMe"
       />
     </view>
 
@@ -71,27 +71,38 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { usePointsStore } from '@/store/points'
 import Navbar from '@/components/common/navbar.vue'
 import RankingItem from '@/components/business/ranking-item.vue'
 import EmptyState from '@/components/common/empty-state.vue'
 
 const pointsStore = usePointsStore()
-const { ranking, rankingType, rankingScope, loading, fetchRanking, setRankingType, setRankingScope } = pointsStore
+const {
+  ranking,
+  rankingPeriod,
+  rankingScope,
+  loading,
+  fetchRanking,
+  setRankingPeriod,
+  setRankingScope
+} = pointsStore
 
 const defaultAvatar = 'https://trae-api-cn.mchost.guru/api/ide/v1/text-to-image?prompt=cute%20cartoon%20child%20avatar&image-size=square'
 
 const tabList = [
   { label: '周榜', value: 'week' },
-  { label: '学期榜', value: 'semester' },
-  { label: '年度榜', value: 'year' }
+  { label: '月榜', value: 'month' },
+  { label: '年榜', value: 'year' }
 ]
 
 const scopeList = [
   { label: '本班', value: 'class' },
-  { label: '本校区', value: 'campus' }
+  { label: '全校', value: 'school' }
 ]
+
+const topThreeList = computed(() => ranking.value.list?.slice(0, 3) || [])
+const restList = computed(() => ranking.value.list?.slice(3) || [])
 
 onMounted(() => {
   fetchRanking()
@@ -238,14 +249,6 @@ onMounted(() => {
     font-size: $font-size-h2;
     font-weight: $font-weight-bold;
     color: $color-primary;
-  }
-
-  .my-rank-name {
-    font-size: $font-size-h3;
-    font-weight: $font-weight-semibold;
-    color: $color-text-primary;
-    flex: 1;
-    margin-left: $spacing-md;
   }
 
   .my-rank-points {
