@@ -17,30 +17,26 @@
             &lt;text v-if="task.type === 'homework'"&gt;📝 作业&lt;/text&gt;
             &lt;text v-else&gt;🔥 打卡&lt;/text&gt;
           &lt;/view&gt;
-          &lt;view class="task-frequency" :class="task.frequency?.mode" v-if="task.frequency"&gt;
-            &lt;text v-if="task.frequency.mode === 'daily_once'"&gt;每日一次&lt;/text&gt;
-            &lt;text v-else-if="task.frequency.mode === 'daily_multi'"&gt;每日多次&lt;/text&gt;
+          &lt;view class="task-frequency" :class="task.frequencyMode" v-if="task.frequencyMode"&gt;
+            &lt;text v-if="task.frequencyMode === 'daily_once'"&gt;每日一次&lt;/text&gt;
+            &lt;text v-else-if="task.frequencyMode === 'daily_multi'"&gt;每日多次&lt;/text&gt;
             &lt;text v-else&gt;每周固定&lt;/text&gt;
           &lt;/view&gt;
         &lt;/view&gt;
         &lt;text class="task-title"&gt;{{ task.title }}&lt;/text&gt;
         &lt;view class="task-meta"&gt;
-          &lt;view class="meta-item" v-if="task.className"&gt;
+          &lt;view class="meta-item" v-if="task.classIds &amp;&amp; task.classIds.length &gt; 0"&gt;
             &lt;text class="meta-icon"&gt;👥&lt;/text&gt;
-            &lt;text class="meta-text"&gt;{{ task.className }}&lt;/text&gt;
-          &lt;/view&gt;
-          &lt;view class="meta-item" v-if="task.teacherName"&gt;
-            &lt;text class="meta-icon"&gt;👤&lt;/text&gt;
-            &lt;text class="meta-text"&gt;{{ task.teacherName }}&lt;/text&gt;
+            &lt;text class="meta-text"&gt;{{ task.classIds[0].name }}&lt;/text&gt;
           &lt;/view&gt;
           &lt;view class="meta-item"&gt;
             &lt;text class="meta-icon"&gt;📅&lt;/text&gt;
             &lt;text class="meta-text"&gt;{{ formatDate(task.startDate) }} - {{ formatDate(task.endDate) }}&lt;/text&gt;
           &lt;/view&gt;
         &lt;/view&gt;
-        &lt;view class="progress-section" v-if="task.totalDays !== undefined"&gt;
+        &lt;view class="progress-section" v-if="task.progress"&gt;
           &lt;view class="progress-info"&gt;
-            &lt;text class="progress-text"&gt;进度：{{ task.submitCount || 0 }}/{{ task.totalDays }}&lt;/text&gt;
+            &lt;text class="progress-text"&gt;进度：{{ task.progress.completedDays || 0 }}/{{ task.progress.totalDays }}&lt;/text&gt;
           &lt;/view&gt;
           &lt;view class="progress-bar"&gt;
             &lt;view class="progress-fill" :style="{ width: progressPercent + '%' }"&gt;&lt;/view&gt;
@@ -48,31 +44,27 @@
         &lt;/view&gt;
       &lt;/view&gt;
 
-      &lt;view class="points-card" v-if="task.points"&gt;
+      &lt;view class="points-card"&gt;
         &lt;view class="points-header"&gt;
           &lt;text class="points-title"&gt;📖 积分规则&lt;/text&gt;
         &lt;/view&gt;
         &lt;view class="points-list"&gt;
-          &lt;view class="points-item" v-if="task.points.submit !== undefined"&gt;
-            &lt;text class="points-label"&gt;{{ task.type === 'checkin' ? '每日打卡' : '完成任务' }}&lt;/text&gt;
-            &lt;text class="points-value"&gt;+{{ task.points.submit }}积分&lt;/text&gt;
+          &lt;view class="points-item" v-if="task.completionPoints !== undefined"&gt;
+            &lt;text class="points-label"&gt;{{ task.type === 'checkin' ? '完成打卡' : '完成任务' }}&lt;/text&gt;
+            &lt;text class="points-value"&gt;+{{ task.completionPoints }}积分&lt;/text&gt;
           &lt;/view&gt;
-          &lt;view class="points-item" v-if="task.type === 'checkin' &amp;&amp; task.points.shareMoment !== undefined"&gt;
+          &lt;view class="points-item" v-if="task.type === 'checkin' &amp;&amp; task.checkinSharePoints !== undefined"&gt;
             &lt;text class="points-label"&gt;分享朋友圈&lt;/text&gt;
-            &lt;text class="points-value"&gt;+{{ task.points.shareMoment }}积分&lt;/text&gt;
-          &lt;/view&gt;
-          &lt;view class="points-item" v-if="task.points.completion !== undefined"&gt;
-            &lt;text class="points-label"&gt;全部完成奖励&lt;/text&gt;
-            &lt;text class="points-value"&gt;+{{ task.points.completion }}积分&lt;/text&gt;
+            &lt;text class="points-value"&gt;+{{ task.checkinSharePoints }}积分&lt;/text&gt;
           &lt;/view&gt;
         &lt;/view&gt;
       &lt;/view&gt;
 
-      &lt;view class="today-card" v-if="todayTask"&gt;
+      &lt;view class="today-card" v-if="task.todaySubmission"&gt;
         &lt;view class="today-header"&gt;
-          &lt;text class="today-title"&gt;{{ todayTask.date }}&lt;/text&gt;
-          &lt;view class="today-status" :class="todayTask.status"&gt;
-            &lt;text&gt;{{ todayTask.statusText }}&lt;/text&gt;
+          &lt;text class="today-title"&gt;今日任务&lt;/text&gt;
+          &lt;view class="today-status" :class="task.todaySubmission.submitted ? 'completed' : 'pending'"&gt;
+            &lt;text&gt;{{ task.todaySubmission.submitted ? '已完成' : '未完成' }}&lt;/text&gt;
           &lt;/view&gt;
         &lt;/view&gt;
       &lt;/view&gt;
@@ -112,7 +104,7 @@
     &lt;SharePanel 
       v-if="showSharePanel"
       :task="task"
-      :today-share-count="task.todayShareCount || 0"
+      :today-share-count="0"
       @share="confirmShare"
       @close="showSharePanel = false"
     /&gt;
@@ -122,6 +114,10 @@
 &lt;script setup&gt;
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/store/task'
+import Navbar from '@/components/common/navbar.vue'
+import EmptyState from '@/components/common/empty-state.vue'
+import SubmitRecord from '@/components/business/submit-record.vue'
+import SharePanel from '@/components/business/share-panel.vue'
 
 const taskStore = useTaskStore()
 
@@ -133,9 +129,10 @@ const task = computed(() =&gt; taskStore.currentTask)
 const submitRecords = computed(() =&gt; taskStore.submitRecords)
 
 const progressPercent = computed(() =&gt; {
-  if (!task.value || task.value.totalDays === undefined) return 0
-  const count = task.value.submitCount || 0
-  return Math.min(100, (count / task.value.totalDays) * 100)
+  if (!task.value || !task.value.progress) return 0
+  const count = task.value.progress.completedDays || 0
+  const total = task.value.progress.totalDays
+  return total ? Math.min(100, (count / total) * 100) : 0
 })
 
 const canSubmit = computed(() =&gt; {
@@ -145,25 +142,22 @@ const canSubmit = computed(() =&gt; {
   const endDate = new Date(task.value.endDate)
   
   if (now &lt; startDate || now &gt; endDate) return false
-  if (task.value.submitCount &gt;= task.value.totalDays) return false
+  if (task.value.progress &amp;&amp; task.value.progress.completedDays &gt;= task.value.progress.totalDays) return false
   
-  const todaySubmit = task.value.todaySubmitCount || 0
-  const maxDaily = task.value.frequency?.timesPerDay || 1
-  return todaySubmit &lt; maxDaily
+  if (task.value.todaySubmission) {
+    return !task.value.todaySubmission.submitted
+  }
+  return true
 })
 
 const canShare = computed(() =&gt; {
   if (!task.value) return false
   if (task.value.type === 'checkin') return true
-  return task.value.submitCount &gt;= task.value.totalDays
+  return task.value.progress &amp;&amp; task.value.progress.completedDays &gt;= task.value.progress.totalDays
 })
 
 const recentRecords = computed(() =&gt; {
   return submitRecords.value.slice(0, 3)
-})
-
-const todayTask = computed(() =&gt; {
-  return null
 })
 
 const formatDate = (dateStr) =&gt; {
@@ -182,7 +176,7 @@ const getButtonText = () =&gt; {
   
   if (now &lt; startDate) return '未开始'
   if (now &gt; endDate) return '已结束'
-  if (task.value.submitCount &gt;= task.value.totalDays) return '已完成'
+  if (task.value.progress &amp;&amp; task.value.progress.completedDays &gt;= task.value.progress.totalDays) return '已完成'
   return '今日已完成'
 }
 
@@ -211,20 +205,10 @@ const confirmShare = async (shareData) =&gt; {
     
     showSharePanel.value = false
     
-    if (shareData.points &gt; 0) {
-      setTimeout(() =&gt; {
-        uni.showModal({
-          title: '分享成功',
-          content: `+${shareData.points}积分`,
-          showCancel: false
-        })
-      }, 500)
-    } else {
-      uni.showToast({
-        title: '分享成功',
-        icon: 'success'
-      })
-    }
+    uni.showToast({
+      title: '分享成功',
+      icon: 'success'
+    })
   } catch (error) {
     console.error('分享失败', error)
   }
@@ -234,7 +218,7 @@ const fetchData = async () =&gt; {
   try {
     await Promise.all([
       taskStore.fetchTaskDetail(taskId.value),
-      taskStore.fetchSubmitRecords(taskId.value)
+      taskStore.fetchTaskProgress(taskId.value)
     ])
   } catch (error) {
     console.error('获取数据失败', error)
@@ -333,7 +317,7 @@ onMounted(() =&gt; {
       color: $color-success;
     }
 
-    &amp;.weekly {
+    &amp;.weekly_fixed {
       background: rgba(168, 85, 247, 0.1);
       color: #a855f7;
     }
@@ -437,6 +421,25 @@ onMounted(() =&gt; {
     font-size: $font-size-h3;
     font-weight: $font-weight-semibold;
     color: $color-text-primary;
+  }
+
+  .today-status {
+    display: inline-flex;
+    align-items: center;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-tag;
+    font-size: $font-size-caption;
+    font-weight: $font-weight-medium;
+
+    &amp;.completed {
+      background: $color-success-light;
+      color: $color-success;
+    }
+
+    &amp;.pending {
+      background: $color-warning-light;
+      color: $color-warning;
+    }
   }
 }
 

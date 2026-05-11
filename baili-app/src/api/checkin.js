@@ -1,19 +1,9 @@
-import { get } from './request'
-
-export const getCheckinStats = (params) =&gt; {
-  return get('/checkin/stats', params)
-}
-
-export const getCheckinCalendar = (year, month) =&gt; {
-  return get('/checkin/calendar', { year, month })
-}
-
-export const getCheckinRanking = (params) =&gt; {
-  return get('/checkin/ranking', params)
-}
+import request from './request.js'
 
 export default {
-  getCheckinStats,
-  getCheckinCalendar,
-  getCheckinRanking
+  checkin: {
+    stats: () => request({ url: '/api/checkin/stats' })
+  }
 }
+
+export const getCheckinStats = () => request({ url: '/api/checkin/stats' })

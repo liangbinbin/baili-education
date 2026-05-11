@@ -1,54 +1,28 @@
-import { get, post } from './request'
+import request from './request.js'
 
 export const TASK_TYPE_HOMEWORK = 'homework'
 export const TASK_TYPE_CHECKIN = 'checkin'
 
-export const getTaskList = (params) =&gt; {
-  return get('/task/list', params)
-}
-
-export const getTaskDetail = (id) =&gt; {
-  return get('/task/detail', { id })
-}
-
-export const publishTask = (data) =&gt; {
-  return post('/task/publish', data)
-}
-
-export const submitTask = (data) =&gt; {
-  return post('/task/submit', data)
-}
-
-export const getSubmitRecords = (taskId, params) =&gt; {
-  return get('/task/submit-records', { taskId, ...params })
-}
-
-export const gradeTask = (data) =&gt; {
-  return post('/task/grade', data)
-}
-
-export const getMySubmitRecords = (params) =&gt; {
-  return get('/task/my-submit-records', params)
-}
-
-export const recordShare = (data) =&gt; {
-  return post('/task/share', data)
-}
-
-export const getTaskStats = () =&gt; {
-  return get('/task/stats')
-}
-
 export default {
-  TASK_TYPE_HOMEWORK,
-  TASK_TYPE_CHECKIN,
-  getTaskList,
-  getTaskDetail,
-  publishTask,
-  submitTask,
-  getSubmitRecords,
-  gradeTask,
-  getMySubmitRecords,
-  recordShare,
-  getTaskStats
+  task: {
+    list: (params) => request({ url: '/api/task/list', method: 'GET', data: params }),
+    create: (data) => request({ url: '/api/task', method: 'POST', data }),
+    detail: (id) => request({ url: `/api/task/${id}` }),
+    submit: (data) => request({ url: '/api/task/submit', method: 'POST', data }),
+    submitMakeup: (data) => request({ url: '/api/task/submit/makeup', method: 'POST', data }),
+    share: (data) => request({ url: '/api/task/share', method: 'POST', data }),
+    shareSummary: (data) => request({ url: '/api/task/share/summary', method: 'POST', data }),
+    grade: (id, data) => request({ url: `/api/task/grade/${id}`, method: 'PUT', data }),
+    progress: (id) => request({ url: `/api/task/${id}/progress` })
+  }
 }
+
+export const getTaskList = (params) => request({ url: '/api/task/list', method: 'GET', data: params })
+export const createTask = (data) => request({ url: '/api/task', method: 'POST', data })
+export const getTaskDetail = (id) => request({ url: `/api/task/${id}` })
+export const submitTask = (data) => request({ url: '/api/task/submit', method: 'POST', data })
+export const submitMakeupTask = (data) => request({ url: '/api/task/submit/makeup', method: 'POST', data })
+export const recordShare = (data) => request({ url: '/api/task/share', method: 'POST', data })
+export const shareSummary = (data) => request({ url: '/api/task/share/summary', method: 'POST', data })
+export const gradeTask = (id, data) => request({ url: `/api/task/grade/${id}`, method: 'PUT', data })
+export const getTaskProgress = (id) => request({ url: `/api/task/${id}/progress` })

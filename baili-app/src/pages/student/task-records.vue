@@ -21,12 +21,12 @@
         &lt;/view&gt;
         &lt;view class="summary-stats"&gt;
           &lt;view class="stat-item"&gt;
-            &lt;text class="stat-value"&gt;{{ task.submitCount || 0 }}&lt;/text&gt;
+            &lt;text class="stat-value"&gt;{{ task.progress?.completedDays || 0 }}&lt;/text&gt;
             &lt;text class="stat-label"&gt;已提交&lt;/text&gt;
           &lt;/view&gt;
           &lt;view class="stat-divider"&gt;&lt;/view&gt;
           &lt;view class="stat-item"&gt;
-            &lt;text class="stat-value"&gt;{{ task.totalDays || 0 }}&lt;/text&gt;
+            &lt;text class="stat-value"&gt;{{ task.progress?.totalDays || 0 }}&lt;/text&gt;
             &lt;text class="stat-label"&gt;总天数&lt;/text&gt;
           &lt;/view&gt;
         &lt;/view&gt;
@@ -36,11 +36,11 @@
         &lt;view class="record-card" v-for="(record, index) in submitRecords" :key="index"&gt;
           &lt;view class="record-header"&gt;
             &lt;view class="record-date"&gt;
-              &lt;text class="date-text"&gt;{{ formatDate(record.createdAt || record.date) }}&lt;/text&gt;
-              &lt;text v-if="record.time" class="time-text"&gt;{{ record.time }}&lt;/text&gt;
+              &lt;text class="date-text"&gt;{{ formatDate(record.date) }}&lt;/text&gt;
+              &lt;text v-if="record.dayIndex" class="time-text"&gt;第{{ record.dayIndex }}天&lt;/text&gt;
             &lt;/view&gt;
-            &lt;view class="record-status" :class="record.status || 'completed'"&gt;
-              &lt;text&gt;{{ getStatusText(record.status) }}&lt;/text&gt;
+            &lt;view class="record-status" :class="record.isCompleted ? 'completed' : 'pending'"&gt;
+              &lt;text&gt;{{ record.isCompleted ? '已完成' : '待完成' }}&lt;/text&gt;
             &lt;/view&gt;
           &lt;/view&gt;
 
@@ -51,21 +51,22 @@
             &lt;/view&gt;
           &lt;/view&gt;
 
-          &lt;view v-if="record.content" class="record-content"&gt;
-            &lt;text&gt;{{ record.content }}&lt;/text&gt;
-          &lt;/view&gt;
-
           &lt;view class="record-footer"&gt;
-            &lt;text v-if="record.points || record.earnedPoints" class="record-points"&gt;
-              +{{ record.points || record.earnedPoints }}积分
+            &lt;text v-if="record.pointsEarned" class="record-points"&gt;
+              +{{ record.pointsEarned }}积分
             &lt;/text&gt;
+            &lt;view class="share-status"&gt;
+              &lt;text v-if="record.isSharedToChat" class="share-tag chat"&gt;已分享好友&lt;/text&gt;
+              &lt;text v-if="record.isSharedToMoments" class="share-tag moments"&gt;已分享朋友圈&lt;/text&gt;
+            &lt;/view&gt;
           &lt;/view&gt;
 
-          &lt;view v-if="record.gradedPoints !== undefined" class="record-grade"&gt;
+          &lt;view v-if="record.grade || record.comment || record.bonusPoints" class="record-grade"&gt;
             &lt;view class="grade-divider"&gt;&lt;/view&gt;
             &lt;view class="grade-info"&gt;
               &lt;text class="grade-label"&gt;老师评价&lt;/text&gt;
-              &lt;text class="grade-points"&gt;获得积分：{{ record.gradedPoints }}/{{ record.points || 100 }}&lt;/text&gt;
+              &lt;text v-if="record.grade" class="grade-score"&gt;等级：{{ record.grade }}&lt;/text&gt;
+              &lt;text v-if="record.bonusPoints" class="grade-points"&gt;额外积分：+{{ record.bonusPoints }}&lt;/text&gt;
             &lt;/view&gt;
             &lt;text v-if="record.comment" class="grade-comment"&gt;{{ record.comment }}&lt;/text&gt;
           &lt;/view&gt;
@@ -78,6 +79,8 @@
 &lt;script setup&gt;
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/store/task'
+import Navbar from '@/components/common/navbar.vue'
+import EmptyState from '@/components/common/empty-state.vue'
 
 const taskStore = useTaskStore()
 const taskId = ref('')
@@ -91,15 +94,7 @@ const formatDate = (dateStr) =&gt; {
   const date = new Date(dateStr)
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const day = date.getDate().toString().padStart(2, '0')
-  const hours = date.getHours().toString().padStart(2, '0')
-  const minutes = date.getMinutes().toString().padStart(2, '0')
-  return `${month}.${day} ${hours}:${minutes}`
-}
-
-const getStatusText = (status) =&gt; {
-  if (status === 'graded') return '已批改'
-  if (status === 'pending') return '待批改'
-  return '已提交'
+  return `${month}.${day}`
 }
 
 const getFileIcon = (type) =&gt; {
@@ -122,7 +117,7 @@ const fetchData = async () =&gt; {
   try {
     await Promise.all([
       taskStore.fetchTaskDetail(taskId.value),
-      taskStore.fetchSubmitRecords(taskId.value)
+      taskStore.fetchTaskProgress(taskId.value)
     ])
   } catch (error) {
     console.error('获取数据失败', error)
@@ -289,11 +284,6 @@ onMounted(() =&gt; {
     background: $color-warning-light;
     color: $color-warning;
   }
-
-  &amp;.graded {
-    background: $color-primary-light;
-    color: $color-primary;
-  }
 }
 
 .record-files {
@@ -316,14 +306,10 @@ onMounted(() =&gt; {
   color: $color-text-primary;
 }
 
-.record-content {
-  margin-bottom: $spacing-md;
-  font-size: $font-size-body;
-  color: $color-text-secondary;
-  line-height: 1.6;
-}
-
 .record-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding-bottom: $spacing-sm;
 }
 
@@ -331,6 +317,30 @@ onMounted(() =&gt; {
   font-size: $font-size-body;
   font-weight: $font-weight-semibold;
   color: $color-primary;
+}
+
+.share-status {
+  display: flex;
+  gap: $spacing-xs;
+}
+
+.share-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-tag;
+  font-size: 24rpx;
+  font-weight: $font-weight-medium;
+
+  &amp;.chat {
+    background: $color-info-light;
+    color: $color-info;
+  }
+
+  &amp;.moments {
+    background: $color-primary-light;
+    color: $color-primary;
+  }
 }
 
 .record-grade {
@@ -345,20 +355,24 @@ onMounted(() =&gt; {
 }
 
 .grade-info {
+  display: flex;
+  gap: $spacing-md;
   margin-bottom: $spacing-sm;
 }
 
 .grade-label {
-  display: block;
   font-size: $font-size-body;
   font-weight: $font-weight-medium;
   color: $color-text-primary;
-  margin-bottom: $spacing-xs;
+}
+
+.grade-score {
+  font-size: $font-size-body;
+  color: $color-primary;
 }
 
 .grade-points {
-  font-size: $font-size-h3;
-  font-weight: $font-weight-semibold;
+  font-size: $font-size-body;
   color: $color-primary;
 }
 

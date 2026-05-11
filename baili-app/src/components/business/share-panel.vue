@@ -25,11 +25,8 @@
             &lt;text&gt;{{ option.icon }}&lt;/text&gt;
           &lt;/view&gt;
           &lt;text class="option-label"&gt;{{ option.label }}&lt;/text&gt;
+          &lt;text v-if="option.points &gt; 0" class="option-points"&gt;+{{ option.points }}积分&lt;/text&gt;
         &lt;/view&gt;
-      &lt;/view&gt;
-
-      &lt;view v-if="showShareLimit" class="share-limit"&gt;
-        &lt;text class="limit-text"&gt;今日朋友圈分享次数：{{ todayShareCount }}/{{ maxDailyShare }}&lt;/text&gt;
       &lt;/view&gt;
 
       &lt;view class="share-footer"&gt;
@@ -52,23 +49,15 @@ const props = defineProps({
   todayShareCount: {
     type: Number,
     default: 0
-  },
-  maxDailyShare: {
-    type: Number,
-    default: 1
   }
 })
 
 const emit = defineEmits(['share', 'close'])
 
-const shareOptions = [
-  { type: 'wechat', label: '微信好友', icon: '💬', points: 0 },
-  { type: 'moments', label: '朋友圈', icon: '⭕', points: 5 }
-]
-
-const showShareLimit = computed(() =&gt; {
-  return props.task?.type === 'checkin'
-})
+const shareOptions = computed(() =&gt; [
+  { type: 'chat', label: '微信好友', icon: '💬', points: 0 },
+  { type: 'moments', label: '朋友圈', icon: '⭕', points: props.task?.checkinSharePoints || 0 }
+])
 
 const shareContent = computed(() =&gt; {
   const task = props.task
@@ -80,38 +69,27 @@ const shareContent = computed(() =&gt; {
   }
 
   const typeText = task.type === 'checkin' ? '打卡' : '作业'
-  const progress = task.submitCount || 0
-  const total = task.totalDays || 0
-  const streak = task.streakDays || 0
+  const progress = task.progress?.completedDays || 0
+  const total = task.progress?.totalDays || 0
 
   let title = `🔥 我在百里口才完成了《${task.title}》`
-  if (streak &gt; 1) {
-    title += `，连续${streak}天${typeText}！`
-  } else if (total &gt; 0) {
+  if (total &gt; 0) {
     title += `，已完成${progress}/${total}！`
+  } else {
+    title += `！`
   }
 
   return {
-    title,
+    title: task.shareText || title,
     desc: '让演说成为孩子自信生长的力量！'
   }
 })
 
 const isOptionDisabled = (option) =&gt; {
-  if (option.type === 'moments') {
-    return props.todayShareCount &gt;= props.maxDailyShare
-  }
   return false
 }
 
 const handleShare = (option) =&gt; {
-  if (isOptionDisabled(option)) {
-    uni.showToast({
-      title: '今日朋友圈分享次数已用完',
-      icon: 'none'
-    })
-    return
-  }
   emit('share', {
     type: option.type,
     task: props.task,
@@ -215,7 +193,7 @@ const handleClose = () =&gt; {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: $spacing-sm;
+      gap: $spacing-xs;
       padding: $spacing-md;
 
       &amp;.disabled {
@@ -232,7 +210,7 @@ const handleClose = () =&gt; {
         justify-content: center;
         font-size: 44rpx;
 
-        &amp;.wechat {
+        &amp;.chat {
           background: linear-gradient(135deg, #07c160 0%, #06ad56 100%);
         }
 
@@ -245,16 +223,14 @@ const handleClose = () =&gt; {
         font-size: $font-size-caption;
         color: $color-text-secondary;
       }
-    }
-  }
 
-  .share-limit {
-    text-align: center;
-    padding: $spacing-md 0;
-
-    .limit-text {
-      font-size: $font-size-caption;
-      color: $color-text-placeholder;
+      .option-points {
+        font-size: 22rpx;
+        color: $color-primary;
+        background: $color-primary-light;
+        padding: 4rpx 8rpx;
+        border-radius: 8rpx;
+      }
     }
   }
 

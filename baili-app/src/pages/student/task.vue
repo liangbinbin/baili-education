@@ -8,7 +8,7 @@
       &lt;view class="stat-item"&gt;
         &lt;text class="stat-icon"&gt;📝&lt;/text&gt;
         &lt;view class="stat-info"&gt;
-          &lt;text class="stat-value"&gt;{{ stats.pendingCount || 0 }}&lt;/text&gt;
+          &lt;text class="stat-value"&gt;{{ pendingList.length || 0 }}&lt;/text&gt;
           &lt;text class="stat-label"&gt;待完成&lt;/text&gt;
         &lt;/view&gt;
       &lt;/view&gt;
@@ -16,7 +16,7 @@
       &lt;view class="stat-item"&gt;
         &lt;text class="stat-icon"&gt;🔥&lt;/text&gt;
         &lt;view class="stat-info"&gt;
-          &lt;text class="stat-value"&gt;{{ stats.streakDays || 0 }}&lt;/text&gt;
+          &lt;text class="stat-value"&gt;{{ checkinStats.streak || 0 }}&lt;/text&gt;
           &lt;text class="stat-label"&gt;连续打卡&lt;/text&gt;
         &lt;/view&gt;
       &lt;/view&gt;
@@ -58,7 +58,7 @@
       &lt;view v-else class="task-list"&gt;
         &lt;TaskCard 
           v-for="task in filteredTasks" 
-          :key="task.id" 
+          :key="task._id" 
           :task="task"
           @click="goToDetail(task)"
           @submit="handleSubmit"
@@ -80,6 +80,9 @@
 &lt;script setup&gt;
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/store/task'
+import TaskCard from '@/components/business/task-card.vue'
+import SharePanel from '@/components/business/share-panel.vue'
+import EmptyState from '@/components/common/empty-state.vue'
 
 const taskStore = useTaskStore()
 
@@ -102,7 +105,8 @@ const statusTabs = [
 ]
 
 const taskList = computed(() =&gt; taskStore.taskList)
-const stats = computed(() =&gt; taskStore.stats)
+const pendingList = computed(() =&gt; taskStore.pendingList)
+const checkinStats = computed(() =&gt; taskStore.checkinStats)
 const loading = computed(() =&gt; taskStore.loading)
 
 const filteredTasks = computed(() =&gt; {
@@ -120,59 +124,51 @@ const getTaskStatus = (task) =&gt; {
 
   if (now &lt; startDate) return 'not_started'
   if (now &gt; endDate) return 'ended'
-  if (task.submitCount &gt;= task.totalDays) return 'completed'
+  if (task.progress &amp;&amp; task.progress.completedDays &gt;= task.progress.totalDays) return 'completed'
   return 'active'
 }
 
 const setTypeFilter = (value) =&gt; {
   currentType.value = value
+  taskStore.setFilter({ type: value })
 }
 
 const setStatusFilter = (value) =&gt; {
   currentStatus.value = value
+  taskStore.setFilter({ status: value })
 }
 
 const goToDetail = (task) =&gt; {
   uni.navigateTo({
-    url: `/pages/student/task-detail?id=${task.id}`
+    url: `/pages/student/task-detail?id=${task._id}`
   })
 }
 
 const handleSubmit = (task) =&gt; {
   uni.navigateTo({
-    url: `/pages/student/task-submit?id=${task.id}`
+    url: `/pages/student/task-submit?id=${task._id}`
   })
 }
 
 const handleShare = (task) =&gt; {
   currentShareTask.value = task
-  todayShareCount.value = task.todayShareCount || 0
+  todayShareCount.value = 0
   showSharePanel.value = true
 }
 
 const confirmShare = async (shareData) =&gt; {
   try {
     await taskStore.doRecordShare({
-      taskId: shareData.task.id,
+      taskId: shareData.task._id,
       type: shareData.type
     })
     
     showSharePanel.value = false
     
-    if (shareData.points &gt; 0) {
-      setTimeout(() =&gt; {
-        uni.showModal({
-          title: '分享成功',
-          content: `+${shareData.points}积分`,
-          showCancel: false
-        })
-      }, 500)
-    } else {
-      uni.showToast({
-        title: '分享成功',
-        icon: 'success'
-      })
-    }
+    uni.showToast({
+      title: '分享成功',
+      icon: 'success'
+    })
   } catch (error) {
     console.error('分享失败', error)
   }
@@ -182,7 +178,7 @@ const fetchData = async () =&gt; {
   try {
     await Promise.all([
       taskStore.fetchTaskList(),
-      taskStore.fetchStats()
+      taskStore.fetchCheckinStats()
     ])
   } catch (error) {
     console.error('获取数据失败', error)

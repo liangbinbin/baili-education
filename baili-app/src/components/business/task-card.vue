@@ -6,13 +6,10 @@
           &lt;text v-if="task.type === 'homework'"&gt;📝 作业&lt;/text&gt;
           &lt;text v-else&gt;🔥 打卡&lt;/text&gt;
         &lt;/view&gt;
-        &lt;view v-if="task.frequency" class="task-frequency" :class="task.frequency.mode"&gt;
-          &lt;text v-if="task.frequency.mode === 'daily_once'"&gt;每日一次&lt;/text&gt;
-          &lt;text v-else-if="task.frequency.mode === 'daily_multi'"&gt;每日多次&lt;/text&gt;
+        &lt;view v-if="task.frequencyMode" class="task-frequency" :class="task.frequencyMode"&gt;
+          &lt;text v-if="task.frequencyMode === 'daily-once'"&gt;每日一次&lt;/text&gt;
+          &lt;text v-else-if="task.frequencyMode === 'daily-multi'"&gt;每日多次&lt;/text&gt;
           &lt;text v-else&gt;每周固定&lt;/text&gt;
-        &lt;/view&gt;
-        &lt;view v-if="task.streakDays &gt; 1" class="task-streak"&gt;
-          &lt;text&gt;🔥 {{ task.streakDays }}天连续&lt;/text&gt;
         &lt;/view&gt;
         &lt;view class="task-status" :class="statusInfo.class"&gt;
           &lt;text&gt;{{ statusInfo.text }}&lt;/text&gt;
@@ -22,23 +19,23 @@
     &lt;/view&gt;
 
     &lt;view class="task-info"&gt;
+      &lt;view class="info-item" v-if="task.classIds &amp;&amp; task.classIds.length &gt; 0"&gt;
+        &lt;text class="info-label"&gt;👥&lt;/text&gt;
+        &lt;text class="info-text"&gt;{{ task.classIds[0].name }}&lt;/text&gt;
+      &lt;/view&gt;
       &lt;view class="info-item"&gt;
         &lt;text class="info-label"&gt;📅&lt;/text&gt;
         &lt;text class="info-text"&gt;{{ formatDate(task.startDate) }} - {{ formatDate(task.endDate) }}&lt;/text&gt;
       &lt;/view&gt;
-      &lt;view v-if="task.className" class="info-item"&gt;
-        &lt;text class="info-label"&gt;👥&lt;/text&gt;
-        &lt;text class="info-text"&gt;{{ task.className }}&lt;/text&gt;
-      &lt;/view&gt;
     &lt;/view&gt;
 
-    &lt;view v-if="task.totalDays !== undefined" class="progress-section"&gt;
+    &lt;view v-if="task.progress" class="progress-section"&gt;
       &lt;view class="progress-info"&gt;
-        &lt;text class="progress-text"&gt;进度：{{ task.submitCount || 0 }}/{{ task.totalDays }}&lt;/text&gt;
-        &lt;text v-if="task.points" class="points-text"&gt;+{{ task.points }}积分&lt;/text&gt;
+        &lt;text class="progress-text"&gt;进度：{{ task.progress.completedDays || 0 }}/{{ task.progress.totalDays || 0 }}&lt;/text&gt;
+        &lt;text v-if="task.completionPoints" class="points-text"&gt;+{{ task.completionPoints }}积分&lt;/text&gt;
       &lt;/view&gt;
       &lt;view class="progress-bar"&gt;
-        &lt;view class="progress-fill" :style="{ width: progressPercent + '%' }"&gt;&lt;/view&gt;
+        &lt;view class="progress-fill" :style="{ width: (task.progress.percentage || 0) + '%' }"&gt;&lt;/view&gt;
       &lt;/view&gt;
     &lt;/view&gt;
 
@@ -77,12 +74,6 @@ const formatDate = (dateStr) =&gt; {
   return `${month}.${day}`
 }
 
-const progressPercent = computed(() =&gt; {
-  if (!props.task.totalDays) return 0
-  const count = props.task.submitCount || 0
-  return Math.min(100, (count / props.task.totalDays) * 100)
-})
-
 const statusInfo = computed(() =&gt; {
   const task = props.task
   const now = new Date()
@@ -95,7 +86,7 @@ const statusInfo = computed(() =&gt; {
   if (now &gt; endDate) {
     return { text: '已结束', class: 'ended' }
   }
-  if (task.submitCount &gt;= task.totalDays) {
+  if (task.progress &amp;&amp; task.progress.completedDays &gt;= task.progress.totalDays) {
     return { text: '已完成', class: 'completed' }
   }
   return { text: '进行中', class: 'active' }
@@ -119,7 +110,7 @@ const actions = computed(() =&gt; {
     return result
   }
 
-  const canSubmit = task.canSubmit !== false && (task.todaySubmitCount || 0) &lt; (task.frequency?.timesPerDay || 1)
+  const canSubmit = task.todaySubmission ? !task.todaySubmission.submitted : true
   
   if (canSubmit) {
     result.push({ 
@@ -201,31 +192,20 @@ const handleAction = (action) =&gt; {
       font-size: $font-size-caption;
       font-weight: $font-weight-medium;
 
-      &amp;.daily_once {
+      &amp;.daily-once {
         background: $color-info-light;
         color: $color-info;
       }
 
-      &amp;.daily_multi {
+      &amp;.daily-multi {
         background: $color-success-light;
         color: $color-success;
       }
 
-      &amp;.weekly {
+      &amp;.weekly-fixed {
         background: rgba(168, 85, 247, 0.1);
         color: #a855f7;
       }
-    }
-
-    .task-streak {
-      display: inline-flex;
-      align-items: center;
-      padding: $spacing-xs $spacing-sm;
-      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-      color: white;
-      border-radius: $radius-tag;
-      font-size: $font-size-caption;
-      font-weight: $font-weight-medium;
     }
 
     .task-status {

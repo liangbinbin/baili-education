@@ -2,13 +2,13 @@
   &lt;view class="submit-record"&gt;
     &lt;view class="record-header"&gt;
       &lt;view class="record-date"&gt;
-        &lt;text class="date-text"&gt;{{ formatDate(record.createdAt || record.date) }}&lt;/text&gt;
-        &lt;text v-if="record.time" class="time-text"&gt;{{ record.time }}&lt;/text&gt;
+        &lt;text class="date-text"&gt;{{ formatDate(record.date) }}&lt;/text&gt;
+        &lt;text v-if="record.dayIndex" class="time-text"&gt;第{{ record.dayIndex }}天&lt;/text&gt;
       &lt;/view&gt;
-      &lt;view class="record-status" :class="record.status || 'completed'"&gt;
+      &lt;view class="record-status" :class="record.isCompleted ? 'completed' : 'pending'"&gt;
         &lt;text&gt;{{ getStatusText() }}&lt;/text&gt;
       &lt;/view&gt;
-      &lt;text v-if="record.points || record.earnedPoints" class="record-points"&gt;+{{ record.points || record.earnedPoints }}积分&lt;/text&gt;
+      &lt;text v-if="record.pointsEarned" class="record-points"&gt;+{{ record.pointsEarned }}积分&lt;/text&gt;
     &lt;/view&gt;
 
     &lt;view v-if="record.files &amp;&amp; record.files.length &gt; 0" class="record-files"&gt;
@@ -18,14 +18,16 @@
       &lt;/view&gt;
     &lt;/view&gt;
 
-    &lt;view v-if="record.content" class="record-content"&gt;
-      &lt;text&gt;{{ record.content }}&lt;/text&gt;
+    &lt;view class="share-status" v-if="record.isSharedToChat || record.isSharedToMoments"&gt;
+      &lt;text v-if="record.isSharedToChat" class="share-tag chat"&gt;已分享好友&lt;/text&gt;
+      &lt;text v-if="record.isSharedToMoments" class="share-tag moments"&gt;已分享朋友圈&lt;/text&gt;
     &lt;/view&gt;
 
-    &lt;view v-if="record.gradedPoints !== undefined" class="record-grade"&gt;
+    &lt;view v-if="record.grade || record.comment || record.bonusPoints" class="record-grade"&gt;
       &lt;view class="grade-info"&gt;
         &lt;text class="grade-label"&gt;老师评价&lt;/text&gt;
-        &lt;text class="grade-points"&gt;获得积分：{{ record.gradedPoints }}/{{ record.points || 100 }}&lt;/text&gt;
+        &lt;text v-if="record.grade" class="grade-score"&gt;等级：{{ record.grade }}&lt;/text&gt;
+        &lt;text v-if="record.bonusPoints" class="grade-points"&gt;额外积分：+{{ record.bonusPoints }}&lt;/text&gt;
       &lt;/view&gt;
       &lt;text v-if="record.comment" class="grade-comment"&gt;{{ record.comment }}&lt;/text&gt;
     &lt;/view&gt;
@@ -49,14 +51,11 @@ const formatDate = (dateStr) =&gt; {
 }
 
 const getStatusText = () =&gt; {
-  const status = props.record.status
-  if (status === 'graded') return '已批改'
-  if (status === 'pending') return '待批改'
-  return '已完成'
+  return props.record.isCompleted ? '已完成' : '待完成'
 }
 
 const getFileIcon = (type) =&gt; {
-  if (type?.includes('video') || type === 'video') return '📹'
+  if (type?.includes('video') || type === 'video') return '🎬'
   if (type?.includes('audio') || type === 'audio') return '🎵'
   if (type?.includes('image') || type === 'image') return '🖼️'
   return '📄'
@@ -123,11 +122,6 @@ const getFileName = (file) =&gt; {
         background: $color-warning-light;
         color: $color-warning;
       }
-
-      &amp;.graded {
-        background: $color-primary-light;
-        color: $color-primary;
-      }
     }
 
     .record-points {
@@ -157,11 +151,29 @@ const getFileName = (file) =&gt; {
     }
   }
 
-  .record-content {
+  .share-status {
+    display: flex;
+    gap: $spacing-sm;
     margin-bottom: $spacing-md;
-    font-size: $font-size-body;
-    color: $color-text-secondary;
-    line-height: 1.6;
+
+    .share-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: 24rpx;
+      font-weight: $font-weight-medium;
+
+      &amp;.chat {
+        background: $color-info-light;
+        color: $color-info;
+      }
+
+      &amp;.moments {
+        background: $color-primary-light;
+        color: $color-primary;
+      }
+    }
   }
 
   .record-grade {
@@ -170,18 +182,22 @@ const getFileName = (file) =&gt; {
 
     .grade-info {
       margin-bottom: $spacing-sm;
+      display: flex;
+      gap: $spacing-md;
 
       .grade-label {
-        display: block;
         font-size: $font-size-body;
         font-weight: $font-weight-medium;
         color: $color-text-primary;
-        margin-bottom: $spacing-xs;
+      }
+
+      .grade-score {
+        font-size: $font-size-body;
+        color: $color-primary;
       }
 
       .grade-points {
-        font-size: $font-size-h3;
-        font-weight: $font-weight-semibold;
+        font-size: $font-size-body;
         color: $color-primary;
       }
     }

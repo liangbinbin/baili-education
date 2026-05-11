@@ -20,10 +20,7 @@
         &lt;/view&gt;
         &lt;text class="task-info-title"&gt;{{ task.title }}&lt;/text&gt;
         &lt;view class="task-info-meta"&gt;
-          &lt;text class="task-info-date"&gt;{{ todayDate }} 第{{ (task.submitCount || 0) + 1 }}天&lt;/text&gt;
-        &lt;/view&gt;
-        &lt;view v-if="task.frequency" class="task-submit-limit"&gt;
-          &lt;text class="limit-text"&gt;今日剩余提交次数：{{ maxDaily - todaySubmit }}/{{ maxDaily }}&lt;/text&gt;
+          &lt;text class="task-info-date"&gt;{{ todayDate }} 第{{ (task.progress?.completedDays || 0) + 1 }}天&lt;/text&gt;
         &lt;/view&gt;
       &lt;/view&gt;
 
@@ -82,6 +79,9 @@
 &lt;script setup&gt;
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/store/task'
+import Navbar from '@/components/common/navbar.vue'
+import EmptyState from '@/components/common/empty-state.vue'
+import Button from '@/components/common/button.vue'
 
 const taskStore = useTaskStore()
 
@@ -100,18 +100,10 @@ const todayDate = computed(() =&gt; {
   return `${month}.${day}`
 })
 
-const maxDaily = computed(() =&gt; {
-  return task.value?.frequency?.timesPerDay || 1
-})
-
-const todaySubmit = computed(() =&gt; {
-  return task.value?.todaySubmitCount || 0
-})
-
 const canSubmit = computed(() =&gt; {
   if (!task.value || submitting.value) return false
   if (uploadFiles.value.length === 0) return false
-  if (todaySubmit.value &gt;= maxDaily.value) return false
+  if (task.value.todaySubmission &amp;&amp; task.value.todaySubmission.submitted) return false
   return true
 })
 
@@ -168,10 +160,17 @@ const submitTask = async () =&gt; {
   uni.showLoading({ title: '提交中...' })
   
   try {
+    const today = new Date()
+    const dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`
+    
     const result = await taskStore.doSubmitTask({
       taskId: taskId.value,
-      files: uploadFiles.value,
-      content: content.value
+      date: dateStr,
+      dailyIndex: 1,
+      files: uploadFiles.value.map(file =&gt; ({
+        type: file.type,
+        url: file.url
+      }))
     })
     
     uni.hideLoading()
@@ -180,24 +179,9 @@ const submitTask = async () =&gt; {
       icon: 'success'
     })
     
-    if (result &amp;&amp; result.points &gt; 0) {
-      setTimeout(() =&gt; {
-        uni.showModal({
-          title: '获得积分',
-          content: `+${result.points}积分`,
-          showCancel: false,
-          success: () =&gt; {
-            setTimeout(() =&gt; {
-              uni.navigateBack()
-            }, 500)
-          }
-        })
-      }, 1000)
-    } else {
-      setTimeout(() =&gt; {
-        uni.navigateBack()
-      }, 1500)
-    }
+    setTimeout(() =&gt; {
+      uni.navigateBack()
+    }, 1500)
   } catch (error) {
     uni.hideLoading()
     console.error('提交失败', error)
@@ -304,16 +288,6 @@ onMounted(() =&gt; {
   .task-info-date {
     font-size: $font-size-body;
     color: $color-text-secondary;
-  }
-
-  .task-submit-limit {
-    padding-top: $spacing-sm;
-    border-top: 1rpx solid $color-border-light;
-  }
-
-  .limit-text {
-    font-size: $font-size-caption;
-    color: $color-text-placeholder;
   }
 }
 

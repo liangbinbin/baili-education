@@ -1,158 +1,181 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import {
-  getTaskList,
-  getTaskDetail,
-  publishTask,
-  submitTask,
-  getSubmitRecords,
-  gradeTask,
-  getMySubmitRecords,
-  recordShare,
-  getTaskStats
-} from '@/api/task'
+import api from '@/api/task.js'
+import { getCheckinStats } from '@/api/checkin.js'
 
-export const useTaskStore = defineStore('task', () =&gt; {
+export const useTaskStore = defineStore('task', () => {
   const taskList = ref([])
   const currentTask = ref(null)
+  const currentTaskProgress = ref(null)
   const submitRecords = ref([])
-  const stats = ref({
-    pendingCount: 0,
-    streakDays: 0,
-    totalDays: 0,
-    longestStreak: 0,
-    totalPoints: 0,
-    todayChecked: false
+  const checkinStats = ref({
+    total: 0,
+    streak: 0,
+    maxStreak: 0,
+    today: 0,
+    shareStats: {
+      totalChatShares: 0,
+      totalMomentsShares: 0,
+      momentsPointsEarned: 0,
+      completionBonusEarned: 0
+    }
   })
   const loading = ref(false)
+  const pagination = ref({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0
+  })
   const filter = ref({
     type: '',
     classId: '',
-    status: ''
+    status: '',
+    date: ''
   })
 
-  const homeworkList = computed(() =&gt; 
-    taskList.value.filter(t =&gt; t.type === 'homework')
+  const homeworkList = computed(() => 
+    taskList.value.filter(t => t.type === 'homework')
   )
 
-  const checkinList = computed(() =&gt; 
-    taskList.value.filter(t =&gt; t.type === 'checkin')
+  const checkinList = computed(() => 
+    taskList.value.filter(t => t.type === 'checkin')
   )
 
-  const pendingList = computed(() =&gt; 
-    taskList.value.filter(t =&gt; t.status === 'active')
+  const pendingList = computed(() => 
+    taskList.value.filter(t => t.status === 'active')
   )
 
-  const completedList = computed(() =&gt; 
-    taskList.value.filter(t =&gt; t.status === 'completed')
+  const completedList = computed(() => 
+    taskList.value.filter(t => 
+      t.status === 'ended' || t.progress?.completedDays >= t.progress?.totalDays
+    )
   )
 
-  const fetchTaskList = async (params = {}) =&gt; {
+  const fetchTaskList = async (params = {}) => {
     loading.value = true
     try {
-      const res = await getTaskList({
+      const data = await api.getTaskList({
         ...filter.value,
         ...params
       })
-      taskList.value = res.list || res.data?.list || res.data || []
-      if (res.stats) {
-        stats.value = { ...stats.value, ...res.stats }
+      taskList.value = data.list || data.data?.list || data.data || []
+      if (data.pagination) {
+        pagination.value = data.pagination
+      } else if (data.data?.pagination) {
+        pagination.value = data.data.pagination
       }
-      return res
+      return data
     } catch (error) {
       console.error('获取任务列表失败:', error)
-      uni.showToast({ title: '获取任务列表失败', icon: 'none' })
       throw error
     } finally {
       loading.value = false
     }
   }
 
-  const fetchTaskDetail = async (id) =&gt; {
+  const fetchTaskDetail = async (id) => {
     loading.value = true
     try {
-      const res = await getTaskDetail(id)
-      currentTask.value = res.data || res
-      return currentTask.value
+      const data = await api.getTaskDetail(id)
+      currentTask.value = data
+      return data
     } catch (error) {
       console.error('获取任务详情失败:', error)
-      uni.showToast({ title: '获取任务详情失败', icon: 'none' })
       throw error
     } finally {
       loading.value = false
     }
   }
 
-  const fetchSubmitRecords = async (taskId, params = {}) =&gt; {
+  const fetchTaskProgress = async (id) => {
     loading.value = true
     try {
-      const res = await getSubmitRecords(taskId, params)
-      submitRecords.value = res.list || res.data?.list || res.data || res || []
-      return submitRecords.value
+      const data = await api.getTaskProgress(id)
+      currentTaskProgress.value = data
+      submitRecords.value = data.dailyProgress || []
+      return data
     } catch (error) {
-      console.error('获取提交记录失败:', error)
-      uni.showToast({ title: '获取提交记录失败', icon: 'none' })
+      console.error('获取任务进度失败:', error)
       throw error
     } finally {
       loading.value = false
     }
   }
 
-  const doSubmitTask = async (data) =&gt; {
+  const doSubmitTask = async (data) => {
+    const result = await api.submitTask(data)
+    await fetchTaskList()
+    if (currentTask.value && currentTask.value._id === data.taskId) {
+      await fetchTaskDetail(data.taskId)
+    }
+    return result
+  }
+
+  const doSubmitMakeupTask = async (data) => {
+    const result = await api.submitMakeupTask(data)
+    await fetchTaskList()
+    if (currentTask.value && currentTask.value._id === data.taskId) {
+      await fetchTaskDetail(data.taskId)
+    }
+    return result
+  }
+
+  const doRecordShare = async (data) => {
+    const result = await api.recordShare(data)
+    if (currentTask.value && currentTask.value._id === data.taskId) {
+      await fetchTaskDetail(data.taskId)
+    }
+    return result
+  }
+
+  const doShareSummary = async (data) => {
+    const result = await api.shareSummary(data)
+    if (currentTask.value && currentTask.value._id === data.taskId) {
+      await fetchTaskDetail(data.taskId)
+    }
+    return result
+  }
+
+  const doGradeTask = async (id, data) => {
+    const result = await api.gradeTask(id, data)
+    await fetchTaskList()
+    if (currentTask.value) {
+      await fetchTaskDetail(currentTask.value._id)
+    }
+    return result
+  }
+
+  const fetchCheckinStats = async () => {
     try {
-      const res = await submitTask(data)
-      await fetchTaskList()
-      if (currentTask.value && currentTask.value.id === data.taskId) {
-        await fetchTaskDetail(data.taskId)
-      }
-      return res
+      const data = await getCheckinStats()
+      checkinStats.value = data || checkinStats.value
+      return data
     } catch (error) {
-      console.error('提交任务失败:', error)
+      console.error('获取打卡统计失败:', error)
       throw error
     }
   }
 
-  const doRecordShare = async (data) =&gt; {
-    try {
-      const res = await recordShare(data)
-      if (currentTask.value) {
-        await fetchTaskDetail(currentTask.value.id)
-      }
-      return res
-    } catch (error) {
-      console.error('记录分享失败:', error)
-      throw error
-    }
-  }
-
-  const fetchStats = async () =&gt; {
-    try {
-      const res = await getTaskStats()
-      stats.value = res.data || res || stats.value
-      return stats.value
-    } catch (error) {
-      console.error('获取统计失败:', error)
-      uni.showToast({ title: '获取统计失败', icon: 'none' })
-      throw error
-    }
-  }
-
-  const setFilter = (newFilter) =&gt; {
+  const setFilter = (newFilter) => {
     filter.value = { ...filter.value, ...newFilter }
     fetchTaskList()
   }
 
-  const clearCurrent = () =&gt; {
+  const clearCurrent = () => {
     currentTask.value = null
+    currentTaskProgress.value = null
     submitRecords.value = []
   }
 
   return {
     taskList,
     currentTask,
+    currentTaskProgress,
     submitRecords,
-    stats,
+    checkinStats,
     loading,
+    pagination,
     filter,
     homeworkList,
     checkinList,
@@ -160,10 +183,13 @@ export const useTaskStore = defineStore('task', () =&gt; {
     completedList,
     fetchTaskList,
     fetchTaskDetail,
-    fetchSubmitRecords,
+    fetchTaskProgress,
     doSubmitTask,
+    doSubmitMakeupTask,
     doRecordShare,
-    fetchStats,
+    doShareSummary,
+    doGradeTask,
+    fetchCheckinStats,
     setFilter,
     clearCurrent
   }
