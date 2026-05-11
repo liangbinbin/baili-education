@@ -2,7 +2,7 @@ import storage from '@/utils/storage.js';
 
 const BASE_URL = '';
 
-export function request(options) {
+function request(options) {
   return new Promise((resolve, reject) => {
     const token = storage.get('token');
     
@@ -52,7 +52,10 @@ export function request(options) {
 }
 
 // 导出常用方法
-export const get = (url, data) => request({ url, method: 'GET', data });
-export const post = (url, data) => request({ url, method: 'POST', data });
-export const put = (url, data) => request({ url, method: 'PUT', data });
-export const del = (url, data) => request({ url, method: 'DELETE', data });
+const get = (url, data) => request({ url, method: 'GET', data });
+const post = (url, data) => request({ url, method: 'POST', data });
+const put = (url, data) => request({ url, method: 'PUT', data });
+const del = (url, data) => request({ url, method: 'DELETE', data });
+
+export { request, get, post, put, del };
+export default request;
