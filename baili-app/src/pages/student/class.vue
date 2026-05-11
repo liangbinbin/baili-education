@@ -1,53 +1,100 @@
 <template>
   <view class="class-page">
-    <Navbar title="班级" />
+    <Navbar title="我的班级" />
+
+    <scroll-view class="tab-scroll" scroll-x="true" show-scrollbar="false">
+      <view class="tab-list">
+        <view
+          class="tab-item"
+          :class="{ active: activeTab === item.value }"
+          v-for="item in tabs"
+          :key="item.value"
+          @click="activeTab = item.value"
+        >
+          {{ item.label }}
+        </view>
+      </view>
+    </scroll-view>
 
     <view class="class-list">
-      <view
-        class="class-item"
-        v-for="item in classList"
-        :key="item.id"
-        @click="goToDetail(item.id)"
-      >
-        <image class="class-cover" :src="item.cover" mode="aspectFill" />
-        <view class="class-info">
-          <text class="class-name">{{ item.name }}</text>
-          <view class="class-meta">
-            <text class="teacher">👨‍🏫 {{ item.teacher }}</text>
-            <text class="students">👥 {{ item.studentCount }}人</text>
-          </view>
-          <view class="class-schedule">
-            <text class="schedule-text">{{ item.schedule }}</text>
-          </view>
-        </view>
-        <view class="arrow">›</view>
-      </view>
-      <EmptyState v-if="classList.length === 0" description="暂无班级" />
+      <ClassCard
+        v-for="cls in filteredClasses"
+        :key="cls.id"
+        :title="cls.title"
+        :teacher="cls.teacher"
+        :student-count="cls.studentCount"
+        :schedule="cls.schedule"
+        :status="cls.status"
+        @click="goToDetail(cls.id)"
+      />
+      <EmptyState v-if="filteredClasses.length === 0" description="暂无班级" />
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { getClassList } from '@/api/class'
+
+const activeTab = ref('all')
+
+const tabs = [
+  { label: '全部班级', value: 'all' },
+  { label: '线上班', value: 'online' },
+  { label: '线下班', value: 'offline' }
+]
 
 const classList = ref([
   {
     id: 1,
-    name: '少儿口才启蒙班',
+    title: '演讲基础1班',
     teacher: '李老师',
-    studentCount: 15,
+    studentCount: 20,
     schedule: '周六 10:00-11:30',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=kids%20speech%20class%20room&image_size=square'
+    status: 'ongoing',
+    type: 'offline'
   },
   {
     id: 2,
-    name: '演讲技巧进阶班',
+    title: '演讲基础2班',
     teacher: '王老师',
-    studentCount: 12,
+    studentCount: 18,
     schedule: '周日 14:00-15:30',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=public%20speaking%20class%20room&image_size=square'
+    status: 'ongoing',
+    type: 'online'
+  },
+  {
+    id: 3,
+    title: '演讲进阶班',
+    teacher: '张老师',
+    studentCount: 15,
+    schedule: '周六 16:00-17:30',
+    status: 'ongoing',
+    type: 'offline'
   }
 ])
+
+const filteredClasses = computed(() => {
+  if (activeTab.value === 'all') {
+    return classList.value
+  }
+  return classList.value.filter(cls => cls.type === activeTab.value)
+})
+
+const loadClasses = async () => {
+  try {
+    const data = await getClassList({ type: activeTab.value })
+    if (data && data.length > 0) {
+      classList.value = data
+    }
+  } catch (error) {
+    console.error('获取班级列表失败', error)
+  }
+}
+
+onMounted(() => {
+  loadClasses()
+})
 
 const goToDetail = (id) => {
   uni.navigateTo({ url: `/pages/student/class-detail?id=${id}` })
@@ -63,70 +110,47 @@ const goToDetail = (id) => {
   padding-top: 88rpx;
 }
 
-.class-list {
-  padding: $spacing-lg;
+.tab-scroll {
+  background: $color-bg-card;
+  white-space: nowrap;
+  padding: 0 $spacing-lg;
 
-  .class-item {
-    background: $color-bg-card;
-    border-radius: $radius-card;
-    padding: $spacing-lg;
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-    margin-bottom: $spacing-lg;
-    box-shadow: $shadow-default;
+  .tab-list {
+    display: inline-flex;
+    gap: $spacing-xl;
+    padding: $spacing-md 0;
 
-    .class-cover {
-      width: 160rpx;
-      height: 160rpx;
-      border-radius: $radius-card;
-      flex-shrink: 0;
-    }
+    .tab-item {
+      font-size: $font-size-body;
+      color: $color-text-secondary;
+      padding: $spacing-xs 0;
+      position: relative;
+      white-space: nowrap;
 
-    .class-info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-xs;
-      min-width: 0;
-
-      .class-name {
-        font-size: $font-size-h3;
+      &.active {
+        color: $color-primary;
         font-weight: $font-weight-semibold;
-        color: $color-text-primary;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
 
-      .class-meta {
-        display: flex;
-        gap: $spacing-lg;
-
-        .teacher,
-        .students {
-          font-size: $font-size-caption;
-          color: $color-text-secondary;
+        &::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 40rpx;
+          height: 6rpx;
+          background: $color-primary;
+          border-radius: 3rpx;
         }
       }
-
-      .class-schedule {
-        .schedule-text {
-          font-size: $font-size-caption;
-          color: $color-primary;
-          background: $color-primary-light;
-          padding: $spacing-xs $spacing-sm;
-          border-radius: $radius-tag;
-          display: inline-block;
-        }
-      }
-    }
-
-    .arrow {
-      font-size: 36rpx;
-      color: $color-text-placeholder;
-      flex-shrink: 0;
     }
   }
+}
+
+.class-list {
+  padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
 }
 </style>

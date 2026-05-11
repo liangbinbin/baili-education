@@ -66,8 +66,9 @@ const activeTab = ref('schedule')
 
 const tabs = [
   { label: '课程表', value: 'schedule' },
-  { label: '同学', value: 'members' },
-  { label: '通知', value: 'notices' }
+  { label: '作业', value: 'homework' },
+  { label: '打卡', value: 'checkin' },
+  { label: '同学', value: 'members' }
 ]
 
 const classInfo = ref({

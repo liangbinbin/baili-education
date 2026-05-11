@@ -1,17 +1,6 @@
 <template>
   <view class="course-page">
-    <Navbar title="课程" />
-
-    <view class="search-section">
-      <view class="search-box">
-        <text class="search-icon">🔍</text>
-        <input
-          class="search-input"
-          v-model="searchKeyword"
-          placeholder="搜索课程"
-        />
-      </view>
-    </view>
+    <Navbar title="我的课程" />
 
     <scroll-view class="tab-scroll" scroll-x="true" show-scrollbar="false">
       <view class="tab-list">
@@ -33,11 +22,11 @@
         :key="course.id"
         :cover="course.cover"
         :title="course.title"
-        :teacher="course.teacher"
-        :students="course.students"
-        :price="course.price"
-        :original-price="course.originalPrice"
-        :tag="course.tag"
+        :level="course.level"
+        :lessons="course.lessons"
+        :preview-classes="course.previewClasses"
+        :more-classes="course.moreClasses"
+        :status="course.status"
         @click="goToDetail(course.id)"
       />
       <EmptyState v-if="filteredCourses.length === 0" description="暂无课程" />
@@ -46,81 +35,71 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { getCourseList } from '@/api/course'
 
-const searchKeyword = ref('')
 const activeTab = ref('all')
 
 const tabs = [
   { label: '全部', value: 'all' },
-  { label: '入门', value: 'beginner' },
-  { label: '进阶', value: 'intermediate' },
-  { label: '高级', value: 'advanced' }
+  { label: '报名中', value: 'enrolling' },
+  { label: '进行中', value: 'ongoing' },
+  { label: '已结课', value: 'finished' }
 ]
 
 const courseList = ref([
   {
     id: 1,
-    title: '少儿口才入门',
-    teacher: '李老师',
-    students: 1280,
-    price: 0,
-    originalPrice: 299,
-    tag: '免费',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=kids%20speech%20training%20course%20cover&image_size=square',
-    category: 'beginner'
+    title: '演讲基础',
+    level: '入门级',
+    lessons: 24,
+    previewClasses: ['基础1班', '基础2班'],
+    moreClasses: 3,
+    status: 'ongoing',
+    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=kids%20speech%20training%20course%20cover&image_size=square'
   },
   {
     id: 2,
-    title: '演讲技巧提升',
-    teacher: '王老师',
-    students: 856,
-    price: 199,
-    originalPrice: 399,
-    tag: '热门',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=public%20speaking%20course%20cover&image_size=square',
-    category: 'intermediate'
+    title: '演讲进阶',
+    level: '进阶级',
+    lessons: 32,
+    previewClasses: ['进阶1班'],
+    moreClasses: 1,
+    status: 'ongoing',
+    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=public%20speaking%20course%20cover&image_size=square'
   },
   {
     id: 3,
     title: '主持人培训',
-    teacher: '张老师',
-    students: 520,
-    price: 299,
-    originalPrice: 599,
-    tag: '',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=host%20training%20course%20cover&image_size=square',
-    category: 'advanced'
-  },
-  {
-    id: 4,
-    title: '绕口令专项训练',
-    teacher: '刘老师',
-    students: 642,
-    price: 99,
-    originalPrice: 199,
-    tag: '',
-    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=tongue%20twister%20training%20course%20cover&image_size=square',
-    category: 'beginner'
+    level: '高级',
+    lessons: 40,
+    previewClasses: [],
+    moreClasses: 0,
+    status: 'enrolling',
+    cover: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=host%20training%20course%20cover&image_size=square'
   }
 ])
 
 const filteredCourses = computed(() => {
-  let result = courseList.value
-  
-  if (activeTab.value !== 'all') {
-    result = result.filter(course => course.category === activeTab.value)
+  if (activeTab.value === 'all') {
+    return courseList.value
   }
-  
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(course => 
-      course.title.toLowerCase().includes(keyword) ||
-      course.teacher.toLowerCase().includes(keyword)
-    )
+  return courseList.value.filter(course => course.status === activeTab.value)
+})
+
+const loadCourses = async () => {
+  try {
+    const data = await getCourseList({ status: activeTab.value })
+    if (data && data.length > 0) {
+      courseList.value = data
+    }
+  } catch (error) {
+    console.error('获取课程列表失败', error)
   }
-  
-  return result
+}
+
+onMounted(() => {
+  loadCourses()
 })
 
 const goToDetail = (id) => {
@@ -135,31 +114,6 @@ const goToDetail = (id) => {
   min-height: 100vh;
   background: $color-bg-page;
   padding-top: 88rpx;
-}
-
-.search-section {
-  padding: $spacing-lg;
-  background: $color-bg-card;
-
-  .search-box {
-    background: $color-bg-page;
-    border-radius: $radius-full;
-    padding: $spacing-sm $spacing-lg;
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-
-    .search-icon {
-      font-size: 32rpx;
-    }
-
-    .search-input {
-      flex: 1;
-      font-size: $font-size-body;
-      height: 48rpx;
-      line-height: 48rpx;
-    }
-  }
 }
 
 .tab-scroll {
@@ -201,5 +155,8 @@ const goToDetail = (id) => {
 
 .course-list {
   padding: $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
 }
 </style>

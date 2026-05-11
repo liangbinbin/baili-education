@@ -1,33 +1,32 @@
 <template>
-  <view class="bl-course-card" @click="handleClick">
-    <view class="bl-course-card__cover">
-      <image :src="cover" mode="aspectFill" class="bl-course-card__img" />
-      <view v-if="tag" class="bl-course-card__tag">{{ tag }}</view>
+  <view class="course-card" @click="handleClick">
+    <view class="course-card__cover">
+      <image :src="cover" mode="aspectFill" class="course-card__img" />
     </view>
-    <view class="bl-course-card__content">
-      <text class="bl-course-card__title">{{ title }}</text>
-      <view class="bl-course-card__meta">
-        <view class="bl-course-card__teacher">
-          <text>{{ teacher }}</text>
+    <view class="course-card__content">
+      <text class="course-card__title">{{ title }}</text>
+      <view class="course-card__meta">
+        <text class="course-card__level">级别：{{ level }}</text>
+        <text class="course-card__lessons">课时：{{ lessons }}课时</text>
+      </view>
+      <view class="course-card__classes">
+        <view class="course-card__class-tag" v-for="(cls, index) in previewClasses" :key="index">
+          <text>{{ cls }}</text>
         </view>
-        <view class="bl-course-card__students">
-          <text>{{ students }}人学习</text>
+        <view v-if="moreClasses > 0" class="course-card__more">
+          <text>+{{ moreClasses }}个班</text>
         </view>
       </view>
-      <view class="bl-course-card__footer">
-        <view class="bl-course-card__price">
-          <text v-if="price > 0">¥{{ price }}</text>
-          <text v-else class="bl-course-card__free">免费</text>
-        </view>
-        <view v-if="originalPrice > price" class="bl-course-card__original">
-          ¥{{ originalPrice }}
-        </view>
+      <view class="course-card__status">
+        <text :class="['course-card__status-text', statusClass]">{{ statusText }}</text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
   cover: {
     type: String,
@@ -37,29 +36,47 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  teacher: {
+  level: {
     type: String,
-    default: ''
+    default: '入门级'
   },
-  students: {
+  lessons: {
     type: Number,
     default: 0
   },
-  price: {
+  previewClasses: {
+    type: Array,
+    default: () => []
+  },
+  moreClasses: {
     type: Number,
     default: 0
   },
-  originalPrice: {
-    type: Number,
-    default: 0
-  },
-  tag: {
+  status: {
     type: String,
-    default: ''
+    default: 'enrolling' // enrolling, ongoing, finished
   }
 })
 
 const emit = defineEmits(['click'])
+
+const statusClass = computed(() => {
+  const map = {
+    enrolling: 'enrolling',
+    ongoing: 'ongoing',
+    finished: 'finished'
+  }
+  return map[props.status] || 'enrolling'
+})
+
+const statusText = computed(() => {
+  const map = {
+    enrolling: '报名中',
+    ongoing: '进行中',
+    finished: '已结课'
+  }
+  return map[props.status] || '报名中'
+})
 
 const handleClick = () => {
   emit('click')
@@ -69,16 +86,17 @@ const handleClick = () => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.bl-course-card {
+.course-card {
   background: $color-bg-card;
   border-radius: $radius-card;
   overflow: hidden;
-  box-shadow: $shadow-default;
+  box-shadow: $shadow-card;
 
   &__cover {
     position: relative;
     width: 100%;
     padding-top: 56.25%;
+    background: $color-bg-page;
   }
 
   &__img {
@@ -87,18 +105,6 @@ const handleClick = () => {
     left: 0;
     width: 100%;
     height: 100%;
-  }
-
-  &__tag {
-    position: absolute;
-    top: $spacing-sm;
-    left: $spacing-sm;
-    background: $color-primary;
-    color: $color-text-white;
-    padding: $spacing-xs $spacing-sm;
-    border-radius: $radius-tag;
-    font-size: $font-size-caption;
-    font-weight: $font-weight-medium;
   }
 
   &__content {
@@ -110,7 +116,7 @@ const handleClick = () => {
     font-size: $font-size-h3;
     font-weight: $font-weight-semibold;
     color: $color-text-primary;
-    margin-bottom: $spacing-sm;
+    margin-bottom: $spacing-md;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -118,37 +124,73 @@ const handleClick = () => {
 
   &__meta {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: $spacing-sm;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-md;
+
+    &-text {
+      font-size: $font-size-caption;
+      color: $color-text-secondary;
+    }
   }
 
-  &__teacher,
-  &__students {
+  &__level,
+  &__lessons {
     font-size: $font-size-caption;
     color: $color-text-secondary;
   }
 
-  &__footer {
+  &__classes {
     display: flex;
-    align-items: baseline;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+    margin-bottom: $spacing-md;
   }
 
-  &__price {
-    font-size: $font-size-h2;
-    font-weight: $font-weight-bold;
-    color: $color-primary;
-    margin-right: $spacing-sm;
+  &__class-tag {
+    background: $color-bg-page;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-tag;
 
-    .bl-course-card__free {
-      color: $color-success;
+    text {
+      font-size: $font-size-caption;
+      color: $color-text-secondary;
     }
   }
 
-  &__original {
-    font-size: $font-size-caption;
-    color: $color-text-placeholder;
-    text-decoration: line-through;
+  &__more {
+    background: $color-bg-page;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-tag;
+
+    text {
+      font-size: $font-size-caption;
+      color: $color-text-secondary;
+    }
+  }
+
+  &__status {
+    &-text {
+      display: inline-block;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+
+      &.enrolling {
+        background: $color-info-light;
+        color: $color-info;
+      }
+
+      &.ongoing {
+        background: $color-success-light;
+        color: $color-success;
+      }
+
+      &.finished {
+        background: $color-border-light;
+        color: $color-text-placeholder;
+      }
+    }
   }
 }
 </style>
