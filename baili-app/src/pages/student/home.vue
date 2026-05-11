@@ -90,6 +90,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { getHomeOverview } from '@/api/home'
+import EmptyState from '@/components/common/empty-state.vue'
 
 const userStore = useUserStore()
 
