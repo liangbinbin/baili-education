@@ -208,8 +208,11 @@ onMounted(() =&gt; {
   const options = currentPage.options
   if (options.id) {
     taskId.value = options.id
-    fetchData()
+  } else {
+    // 如果没有 ID，使用默认 ID
+    taskId.value = '1'
   }
+  fetchData()
 })
 &lt;/script&gt;
 
