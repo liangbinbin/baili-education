@@ -7,8 +7,12 @@ export const useUserStore = defineStore('user', () => {
   const token = ref(storage.get('token', ''))
   const userInfo = ref(storage.get('user', null))
   const accounts = ref(storage.get('accounts', []))
+  const currentRole = ref(storage.get('currentRole', 'student'))
 
   const isLoggedIn = computed(() => !!token.value)
+  const isStudent = computed(() => currentRole.value === 'student')
+  const isTeacher = computed(() => currentRole.value === 'teacher')
+  const isAdmin = computed(() => currentRole.value === 'admin')
 
   const setToken = (newToken) => {
     token.value = newToken
@@ -29,6 +33,11 @@ export const useUserStore = defineStore('user', () => {
       }
       storage.set('accounts', accounts.value)
     }
+  }
+
+  const setRole = (role) => {
+    currentRole.value = role
+    storage.set('currentRole', role)
   }
 
   const doLoginByCode = async (phone, code) => {
@@ -70,9 +79,14 @@ export const useUserStore = defineStore('user', () => {
     token,
     userInfo,
     accounts,
+    currentRole,
     isLoggedIn,
+    isStudent,
+    isTeacher,
+    isAdmin,
     setToken,
     setUserInfo,
+    setRole,
     doLoginByCode,
     doBindWechat,
     doLogout,
