@@ -1,81 +1,139 @@
-<template>
-  <view class="task-submit-page">
-    <Navbar title="提交任务" />
+&lt;template&gt;
+  &lt;view class="task-submit-page"&gt;
+    &lt;Navbar title="提交任务" /&gt;
 
-    <view class="content">
-      <view class="upload-section">
-        <text class="section-title">上传作品</text>
-        <view class="upload-area" @click="chooseUpload">
-          <view class="upload-icon">📷</view>
-          <text class="upload-text">点击上传图片/视频</text>
-        </view>
+    &lt;view v-if="loading" class="loading-container"&gt;
+      &lt;text class="loading-text"&gt;加载中...&lt;/text&gt;
+    &lt;/view&gt;
 
-        <view class="upload-list" v-if="uploadFiles.length > 0">
-          <view class="upload-item" v-for="(file, index) in uploadFiles" :key="index">
-            <image v-if="file.type === 'image'" class="preview-image" :src="file.url" mode="aspectFill" />
-            <view v-else class="preview-video">
-              <text class="video-icon">🎬</text>
-              <text class="video-name">{{ file.name }}</text>
-            </view>
-            <view class="delete-btn" @click="deleteFile(index)">✕</view>
-          </view>
-        </view>
-      </view>
+    &lt;view v-else-if="!task" class="empty-container"&gt;
+      &lt;EmptyState description="任务不存在" /&gt;
+    &lt;/view&gt;
 
-      <view class="text-section">
-        <text class="section-title">文字说明（选填）</text>
-        <textarea
-          class="textarea"
-          v-model="content"
-          placeholder="请输入文字说明..."
+    &lt;view v-else class="content"&gt;
+      &lt;view class="task-info-card"&gt;
+        &lt;view class="task-info-header"&gt;
+          &lt;view class="task-type-badge" :class="task.type"&gt;
+            &lt;text v-if="task.type === 'homework'"&gt;📝 作业&lt;/text&gt;
+            &lt;text v-else&gt;🔥 打卡&lt;/text&gt;
+          &lt;/view&gt;
+        &lt;/view&gt;
+        &lt;text class="task-info-title"&gt;{{ task.title }}&lt;/text&gt;
+        &lt;view class="task-info-meta"&gt;
+          &lt;text class="task-info-date"&gt;{{ todayDate }} 第{{ (task.submitCount || 0) + 1 }}天&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view v-if="task.frequency" class="task-submit-limit"&gt;
+          &lt;text class="limit-text"&gt;今日剩余提交次数：{{ maxDaily - todaySubmit }}/{{ maxDaily }}&lt;/text&gt;
+        &lt;/view&gt;
+      &lt;/view&gt;
+
+      &lt;view class="upload-section"&gt;
+        &lt;view class="section-header"&gt;
+          &lt;text class="section-title"&gt;上传作品&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view class="upload-area" @click="chooseUpload"&gt;
+          &lt;view class="upload-icon"&gt;📤&lt;/view&gt;
+          &lt;text class="upload-text"&gt;点击上传图片/视频/音频&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view v-if="uploadFiles.length &gt; 0" class="upload-list"&gt;
+          &lt;view v-for="(file, index) in uploadFiles" :key="index" class="upload-item"&gt;
+            &lt;view class="file-preview"&gt;
+              &lt;image v-if="file.type === 'image'" :src="file.url" class="preview-image" mode="aspectFill" /&gt;
+              &lt;view v-else class="preview-media"&gt;
+                &lt;text class="media-icon"&gt;{{ file.type === 'video' ? '🎬' : '🎵' }}&lt;/text&gt;
+                &lt;text class="media-name"&gt;{{ file.name }}&lt;/text&gt;
+              &lt;/view&gt;
+            &lt;/view&gt;
+            &lt;view class="delete-btn" @click.stop="deleteFile(index)"&gt;
+              &lt;text&gt;✕&lt;/text&gt;
+            &lt;/view&gt;
+          &lt;/view&gt;
+        &lt;/view&gt;
+      &lt;/view&gt;
+
+      &lt;view class="text-section"&gt;
+        &lt;view class="section-header"&gt;
+          &lt;text class="section-title"&gt;文字说明（选填）&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;textarea 
+          class="textarea" 
+          v-model="content" 
+          placeholder="请输入您的练习心得..."
           :maxlength="500"
-        />
-        <text class="word-count">{{ content.length }}/500</text>
-      </view>
-    </view>
+        /&gt;
+        &lt;text class="word-count"&gt;{{ content.length }}/500&lt;/text&gt;
+      &lt;/view&gt;
+    &lt;/view&gt;
 
-    <view class="footer">
-      <Button type="primary" size="large" :disabled="uploadFiles.length === 0" @click="submitTask">
-        提交
-      </Button>
-    </view>
-  </view>
-</template>
+    &lt;view v-if="task" class="footer"&gt;
+      &lt;Button 
+        type="primary" 
+        size="large" 
+        :disabled="!canSubmit || submitting"
+        :loading="submitting"
+        @click="submitTask"
+      &gt;
+        {{ submitting ? '提交中...' : '提交' }}
+      &lt;/Button&gt;
+    &lt;/view&gt;
+  &lt;/view&gt;
+&lt;/template&gt;
 
-<script setup>
-import { ref, onMounted } from 'vue'
+&lt;script setup&gt;
+import { ref, computed, onMounted } from 'vue'
+import { useTaskStore } from '@/store/task'
+
+const taskStore = useTaskStore()
 
 const taskId = ref('')
 const content = ref('')
 const uploadFiles = ref([])
+const submitting = ref(false)
 
-onMounted(() => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const options = currentPage.options
-  if (options.id) {
-    taskId.value = options.id
-  }
+const loading = computed(() =&gt; taskStore.loading)
+const task = computed(() =&gt; taskStore.currentTask)
+
+const todayDate = computed(() =&gt; {
+  const now = new Date()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  const day = now.getDate().toString().padStart(2, '0')
+  return `${month}.${day}`
 })
 
-const chooseUpload = () => {
+const maxDaily = computed(() =&gt; {
+  return task.value?.frequency?.timesPerDay || 1
+})
+
+const todaySubmit = computed(() =&gt; {
+  return task.value?.todaySubmitCount || 0
+})
+
+const canSubmit = computed(() =&gt; {
+  if (!task.value || submitting.value) return false
+  if (uploadFiles.value.length === 0) return false
+  if (todaySubmit.value &gt;= maxDaily.value) return false
+  return true
+})
+
+const chooseUpload = () =&gt; {
   uni.showActionSheet({
-    itemList: ['拍照', '从相册选择', '拍摄视频'],
-    success: (res) => {
+    itemList: ['拍照', '从相册选择图片', '拍摄视频', '选择视频'],
+    success: (res) =&gt; {
       if (res.tapIndex === 0 || res.tapIndex === 1) {
         chooseImage(res.tapIndex === 0 ? 'camera' : 'album')
-      } else {
-        chooseVideo()
+      } else if (res.tapIndex === 2 || res.tapIndex === 3) {
+        chooseVideo(res.tapIndex === 2 ? 'camera' : 'album')
       }
     }
   })
 }
 
-const chooseImage = (sourceType) => {
+const chooseImage = (sourceType) =&gt; {
   uni.chooseImage({
     sourceType: [sourceType],
-    success: (res) => {
-      res.tempFilePaths.forEach((path, index) => {
+    count: 9,
+    success: (res) =&gt; {
+      res.tempFilePaths.forEach((path, index) =&gt; {
         uploadFiles.value.push({
           type: 'image',
           url: path,
@@ -86,10 +144,10 @@ const chooseImage = (sourceType) => {
   })
 }
 
-const chooseVideo = () => {
+const chooseVideo = (sourceType) =&gt; {
   uni.chooseVideo({
-    sourceType: ['camera'],
-    success: (res) => {
+    sourceType: [sourceType],
+    success: (res) =&gt; {
       uploadFiles.value.push({
         type: 'video',
         url: res.tempFilePath,
@@ -99,55 +157,174 @@ const chooseVideo = () => {
   })
 }
 
-const deleteFile = (index) => {
+const deleteFile = (index) =&gt; {
   uploadFiles.value.splice(index, 1)
 }
 
-const submitTask = () => {
+const submitTask = async () =&gt; {
+  if (!canSubmit.value) return
+  
+  submitting.value = true
   uni.showLoading({ title: '提交中...' })
-  setTimeout(() => {
+  
+  try {
+    const result = await taskStore.doSubmitTask({
+      taskId: taskId.value,
+      files: uploadFiles.value,
+      content: content.value
+    })
+    
     uni.hideLoading()
     uni.showToast({
       title: '提交成功',
-      icon: 'success',
-      success: () => {
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
-      }
+      icon: 'success'
     })
-  }, 1500)
+    
+    if (result &amp;&amp; result.points &gt; 0) {
+      setTimeout(() =&gt; {
+        uni.showModal({
+          title: '获得积分',
+          content: `+${result.points}积分`,
+          showCancel: false,
+          success: () =&gt; {
+            setTimeout(() =&gt; {
+              uni.navigateBack()
+            }, 500)
+          }
+        })
+      }, 1000)
+    } else {
+      setTimeout(() =&gt; {
+        uni.navigateBack()
+      }, 1500)
+    }
+  } catch (error) {
+    uni.hideLoading()
+    console.error('提交失败', error)
+    uni.showToast({
+      title: error.message || '提交失败，请重试',
+      icon: 'none'
+    })
+  } finally {
+    submitting.value = false
+  }
 }
-</script>
 
-<style lang="scss" scoped>
+const fetchData = async () =&gt; {
+  try {
+    await taskStore.fetchTaskDetail(taskId.value)
+  } catch (error) {
+    console.error('获取数据失败', error)
+  }
+}
+
+onMounted(() =&gt; {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options
+  if (options.id) {
+    taskId.value = options.id
+    fetchData()
+  }
+})
+&lt;/script&gt;
+
+&lt;style lang="scss" scoped&gt;
 @import '@/styles/variables.scss';
 
 .task-submit-page {
   min-height: 100vh;
   background: $color-bg-page;
   padding-top: 88rpx;
-  padding-bottom: 160rpx;
+  padding-bottom: 200rpx;
+}
+
+.loading-container,
+.empty-container {
+  padding: 200rpx 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-text {
+  font-size: $font-size-body;
+  color: $color-text-placeholder;
 }
 
 .content {
   padding: $spacing-lg;
 }
 
+.task-info-card,
 .upload-section,
 .text-section {
   background: $color-bg-card;
   border-radius: $radius-card;
   padding: $spacing-xl;
   margin-bottom: $spacing-lg;
+}
 
-  .section-title {
+.task-info-card {
+  .task-info-header {
+    margin-bottom: $spacing-md;
+  }
+
+  .task-type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-tag;
+    font-size: $font-size-caption;
+    font-weight: $font-weight-medium;
+
+    &amp;.homework {
+      background: $color-primary-light;
+      color: $color-primary;
+    }
+
+    &amp;.checkin {
+      background: $color-checkin-light;
+      color: $color-checkin;
+    }
+  }
+
+  .task-info-title {
     display: block;
-    font-size: $font-size-h3;
-    font-weight: $font-weight-semibold;
+    font-size: $font-size-h2;
+    font-weight: $font-weight-bold;
     color: $color-text-primary;
     margin-bottom: $spacing-md;
   }
+
+  .task-info-meta {
+    margin-bottom: $spacing-sm;
+  }
+
+  .task-info-date {
+    font-size: $font-size-body;
+    color: $color-text-secondary;
+  }
+
+  .task-submit-limit {
+    padding-top: $spacing-sm;
+    border-top: 1rpx solid $color-border-light;
+  }
+
+  .limit-text {
+    font-size: $font-size-caption;
+    color: $color-text-placeholder;
+  }
+}
+
+.section-header {
+  margin-bottom: $spacing-lg;
+}
+
+.section-title {
+  font-size: $font-size-h3;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
 }
 
 .upload-section {
@@ -160,15 +337,15 @@ const submitTask = () => {
     align-items: center;
     gap: $spacing-sm;
     background: $color-bg-page;
+  }
 
-    .upload-icon {
-      font-size: 64rpx;
-    }
+  .upload-icon {
+    font-size: 64rpx;
+  }
 
-    .upload-text {
-      font-size: $font-size-body;
-      color: $color-text-secondary;
-    }
+  .upload-text {
+    font-size: $font-size-body;
+    color: $color-text-secondary;
   }
 
   .upload-list {
@@ -176,54 +353,59 @@ const submitTask = () => {
     flex-wrap: wrap;
     gap: $spacing-md;
     margin-top: $spacing-lg;
+  }
 
-    .upload-item {
-      width: 200rpx;
-      height: 200rpx;
-      position: relative;
-      border-radius: $radius-sm;
-      overflow: hidden;
+  .upload-item {
+    width: 200rpx;
+    height: 200rpx;
+    position: relative;
+    border-radius: $radius-sm;
+    overflow: hidden;
+  }
 
-      .preview-image {
-        width: 100%;
-        height: 100%;
-      }
+  .file-preview {
+    width: 100%;
+    height: 100%;
+  }
 
-      .preview-video {
-        width: 100%;
-        height: 100%;
-        background: $color-border-light;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: $spacing-xs;
+  .preview-image {
+    width: 100%;
+    height: 100%;
+  }
 
-        .video-icon {
-          font-size: 48rpx;
-        }
+  .preview-media {
+    width: 100%;
+    height: 100%;
+    background: $color-border-light;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-xs;
+  }
 
-        .video-name {
-          font-size: $font-size-caption;
-          color: $color-text-secondary;
-        }
-      }
+  .media-icon {
+    font-size: 48rpx;
+  }
 
-      .delete-btn {
-        position: absolute;
-        top: 8rpx;
-        right: 8rpx;
-        width: 40rpx;
-        height: 40rpx;
-        background: rgba(0, 0, 0, 0.5);
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24rpx;
-      }
-    }
+  .media-name {
+    font-size: $font-size-caption;
+    color: $color-text-secondary;
+  }
+
+  .delete-btn {
+    position: absolute;
+    top: 8rpx;
+    right: 8rpx;
+    width: 40rpx;
+    height: 40rpx;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24rpx;
   }
 }
 
@@ -237,6 +419,7 @@ const submitTask = () => {
     font-size: $font-size-body;
     color: $color-text-primary;
     line-height: 1.6;
+    box-sizing: border-box;
   }
 
   .word-count {
@@ -255,6 +438,7 @@ const submitTask = () => {
   right: 0;
   background: $color-bg-card;
   padding: $spacing-lg $spacing-xl;
+  padding-bottom: calc($spacing-lg + env(safe-area-inset-bottom));
   box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.05);
 }
-</style>
+&lt;/style&gt;

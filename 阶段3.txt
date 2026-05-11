@@ -1,0 +1,809 @@
+## 4. 阶段3 Prompt - 任务中心（作业+打卡统一）
+
+**开发目标：任务中心（作业+打卡统一）**
+
+```
+【阶段3任务：任务中心（作业+打卡统一）】
+
+═══════════════════════════════════════════════════════════════
+【⚠️ 重要提示 - 任务模块规范】
+═══════════════════════════════════════════════════════════════
+
+此模块是项目中核心模块，作业和打卡已统一为"任务"模型：
+
+1. 任务类型统一：作业(homework)和打卡(checkin)使用同一套数据结构和UI
+2. 三种频次模式：每日一次、每日多次、每周固定
+3. 状态判断必须完整覆盖所有情况
+4. 提交后必须刷新列表和统计
+5. 边界情况必须处理（无网络/超时/重复提交）
+
+═══════════════════════════════════════════════════════════════
+【前置条件】
+═══════════════════════════════════════════════════════════════
+- 阶段1、阶段2完成
+- taskStore 已创建（src/store/task.js）
+- request.js 可用
+
+═══════════════════════════════════════════════════════════════
+【开发页面清单】
+═══════════════════════════════════════════════════════════════
+
+页面（pages/student/）：
+1. src/pages/student/task.vue         # 任务列表页
+2. src/pages/student/task-detail.vue  # 任务详情页
+3. src/pages/student/task-submit.vue # 提交任务页
+4. src/pages/student/task-records.vue # 提交记录页
+
+业务组件（components/business/）：
+5. src/components/business/task-card.vue      # 任务卡片
+6. src/components/business/submit-record.vue  # 提交记录
+7. src/components/business/share-panel.vue    # 分享面板
+8. src/components/business/points-rule.vue   # 积分规则说明
+
+Pinia Store：
+9. src/store/task.js              # 任务模块（统一作业+打卡）
+
+API：
+10. src/api/task.js                # 统一任务接口
+11. src/api/checkin.js             # 仅打卡统计接口
+
+═══════════════════════════════════════════════════════════════
+【任务数据模型 - 必须完整理解】
+═══════════════════════════════════════════════════════════════
+
+任务类型定义：
+
+1. 作业任务（type: 'homework'）
+   - 分享规则：只能全部完成后分享，只能分享微信聊天，不能分享朋友圈
+   - 补交规则：必须按先后顺序一一补上，不能跳过
+   - 积分规则：全部完成后一次性获取总积分
+
+2. 打卡任务（type: 'checkin'）
+   - 分享规则：每次都可分享（微信聊天+朋友圈各一次）；总体分享（微信聊天多次+朋友圈一次）
+   - 补打卡规则：可跳过也可补打
+   - 积分规则：每次分享朋友圈获积分；完成奖励（全部完成或超过N次）
+
+频次模式定义：
+
+```javascript
+// 每日一次（默认）
+frequency: {
+  mode: 'daily_once',      // daily_once | daily_multi | weekly
+  timesPerDay: 1            // 每日次数（默认1）
+}
+
+// 每日多次
+frequency: {
+  mode: 'daily_multi',
+  timesPerDay: 3            // 每日最多3次
+}
+
+// 每周固定
+frequency: {
+  mode: 'weekly',
+  weekDays: [1, 3, 5],     // 周一、周三、周五
+  timesPerDay: 1
+}
+```
+
+任务基本信息：
+
+```javascript
+const task = {
+  id: 'xxx',
+  title: '《演讲基础》每日打卡',
+  type: 'checkin',          // homework | checkin
+  classId: 'xxx',           // 关联班级
+  className: '演讲基础一班',
+  
+  // 时间
+  startDate: '2024-01-15',
+  endDate: '2024-02-15',
+  
+  // 频次
+  frequency: {
+    mode: 'daily_once',
+    timesPerDay: 1
+  },
+  totalDays: 30,            // 总天数
+  
+  // 积分
+  points: {
+    submit: 10,              // 每次提交积分
+    shareMoment: 5,          // 分享朋友圈积分
+    completion: 50          // 完成奖励积分
+  },
+  
+  // 状态
+  status: 'active',          // draft | active | ended
+  submitCount: 5,            // 已提交次数
+  shareCount: 3,             // 已分享次数（朋友圈）
+  todaySubmitCount: 1,       // 今日已提交次数
+  todayShareCount: 1,        // 今日已分享朋友圈次数
+  
+  // 完成情况
+  isCompleted: false,
+  completedAt: null,
+  
+  // 文件要求
+  allowedFileTypes: ['video', 'audio', 'image'],
+  maxFileCount: 3,
+  
+  // 创建者
+  teacherId: 'xxx',
+  teacherName: '李老师'
+};
+```
+
+═══════════════════════════════════════════════════════════════
+【任务状态判断逻辑】
+═══════════════════════════════════════════════════════════════
+
+```javascript
+function getTaskStatus(task) {
+  const now = new Date();
+  const startDate = new Date(task.startDate);
+  const endDate = new Date(task.endDate);
+  
+  // 时间判断
+  if (now < startDate) return { status: 'not_started', label: '未开始' };
+  if (now > endDate) return { status: 'ended', label: '已结束' };
+  
+  // 计算总需次数
+  const totalDays = task.totalDays;
+  const completed = task.submitCount;
+  
+  // 完成判断
+  if (completed >= totalDays) {
+    return { status: 'completed', label: '已完成' };
+  }
+  
+  // 进行中
+  return { 
+    status: 'active', 
+    label: `进行中(${completed}/${totalDays})` 
+  };
+}
+```
+
+═══════════════════════════════════════════════════════════════
+【任务卡片按钮逻辑】
+═══════════════════════════════════════════════════════════════
+
+```javascript
+function getTaskActions(task) {
+  const status = getTaskStatus(task);
+  const { canSubmit, canShare, canMakeup } = getTaskPermissions(task);
+  
+  if (status.status === 'not_started') {
+    return [{ text: '等待开始', type: 'disabled' }];
+  }
+  
+  if (status.status === 'ended') {
+    return [{ text: '已结束', type: 'disabled' }];
+  }
+  
+  if (status.status === 'completed') {
+    return [{ text: '查看详情', type: 'outline' }];
+  }
+  
+  // 进行中状态
+  const actions = [];
+  
+  // 提交按钮
+  if (canSubmit) {
+    actions.push({ text: task.type === 'checkin' ? '立即打卡' : '立即完成', type: 'primary' });
+  } else {
+    actions.push({ text: '今日已打卡', type: 'disabled' });
+  }
+  
+  // 分享按钮（打卡任务可分享，作业任务需完成）
+  if (task.type === 'checkin') {
+    actions.push({ text: '分享', type: 'outline' });
+  } else if (status.status === 'completed') {
+    actions.push({ text: '分享', type: 'outline' });
+  }
+  
+  return actions;
+}
+
+function getTaskPermissions(task) {
+  // 每日提交次数限制
+  const canSubmit = task.todaySubmitCount < task.frequency.timesPerDay;
+  
+  // 朋友圈分享次数限制（每日1次）
+  const canShare = task.type === 'checkin' || task.submitCount >= task.totalDays;
+  const canShareMoment = task.todayShareCount < 1;
+  
+  // 补打卡/补交权限
+  const canMakeup = task.type === 'checkin' ? true : checkHomeworkMakeupOrder(task);
+  
+  return { canSubmit, canShare: canShare && canShareMoment, canMakeup };
+}
+```
+
+═══════════════════════════════════════════════════════════════
+【任务列表页 - 完整布局】
+═══════════════════════════════════════════════════════════════
+
+页面路径：src/pages/student/task.vue
+
+布局结构：
+```
+┌─────────────────────────────────────┐
+│ Navbar                              │
+│ 返回        任务中心                  │
+├─────────────────────────────────────┤
+│ 统计卡片                            │
+│ ┌─────────────────────────────┐     │
+│ │  📝 待完成   🔥 连续打卡    │     │
+│ │     3        7天            │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 筛选标签栏（横向滚动）                 │
+│ [全部] [作业] [打卡]                  │
+├─────────────────────────────────────┤
+│ 班级筛选                            │
+│ [全部班级] [演讲基础一班] [演讲进阶班]   │
+├─────────────────────────────────────┤
+│ 状态筛选                            │
+│ [全部] [进行中] [已完成]              │
+├─────────────────────────────────────┤
+│ 任务卡片列表                         │
+│                                     │
+│ <TaskCard /> × N                   │
+│                                     │
+│ <EmptyState v-if="list.length === 0" />│
+└─────────────────────────────────────┘
+```
+
+TaskCard 组件样式：
+```
+┌─────────────────────────────────────┐
+│ 📝 《演讲基础》每日打卡               │
+│                                     │
+│ ┌────────┐ ┌────────┐ ┌────────┐   │
+│ │每日打卡│ │🔥7天连续│ │进行中  │   │
+│ └────────┘ └────────┘ └────────┘   │
+│                                     │
+│ 📅 2024.01.15 - 02.15               │
+│ 👥 演讲基础一班                      │
+│                                     │
+│ 进度：5/30                          │
+│ ┌─────────────────────────────┐     │
+│ │ ████░░░░░░░░░░░░░░░░░ 17%  │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ [🔥 立即打卡]  [分享]                │
+└─────────────────────────────────────┘
+```
+
+类型标签样式：
+- 作业(homework)：橙色标签 $color-primary
+- 打卡(checkin)：红色标签 $color-checkin
+
+频次标签样式：
+- 每日一次：蓝色标签
+- 每日多次：绿色标签
+- 每周固定：紫色标签
+
+状态标签样式：
+- 进行中：橙色
+- 已完成：绿色
+- 已结束：灰色
+
+API：GET /api/task/list
+
+请求参数：
+- type: 'homework' | 'checkin' | ''（全部）
+- classId: ''（班级筛选）
+- status: 'active' | 'completed' | ''（全部）
+
+响应格式：
+```json
+{
+  "code": 200,
+  "data": {
+    "list": [
+      {
+        "id": "xxx",
+        "title": "《演讲基础》每日打卡",
+        "type": "checkin",
+        "className": "演讲基础一班",
+        "frequency": { "mode": "daily_once", "timesPerDay": 1 },
+        "totalDays": 30,
+        "submitCount": 5,
+        "streakDays": 7,
+        "startDate": "2024-01-15",
+        "endDate": "2024-02-15",
+        "status": "active",
+        "canSubmit": true,
+        "canShare": true,
+        "canMakeup": true
+      }
+    ],
+    "stats": {
+      "pendingCount": 3,
+      "streakDays": 7
+    }
+  }
+}
+```
+
+═══════════════════════════════════════════════════════════════
+【任务详情页 - 完整布局】
+═══════════════════════════════════════════════════════════════
+
+页面路径：src/pages/student/task-detail.vue
+
+布局结构：
+```
+┌─────────────────────────────────────┐
+│ Navbar                              │
+│ 返回        任务详情                 │
+├─────────────────────────────────────┤
+│ 任务信息卡片                         │
+│ ┌─────────────────────────────┐     │
+│ │ 📝 《演讲基础》每日打卡        │     │
+│ │                             │     │
+│ │ 🏷️ 打卡  📅 每日一次          │     │
+│ │ 👥 演讲基础一班               │     │
+│ │ 👤 李老师                    │     │
+│ │ 📅 01.15 - 02.15            │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 积分规则                            │
+│ ┌─────────────────────────────┐     │
+│ │ 📖 积分规则                 │     │
+│ │ · 每次打卡: +10积分         │     │
+│ │ · 分享朋友圈: +5积分         │     │
+│ │ · 完成全部30天: +50积分      │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 今日任务                            │
+│ ┌─────────────────────────────┐     │
+│ │ 01.20                       │     │
+│ │                             │     │
+│ │ 状态：✅ 已完成              │     │
+│ │ 提交时间：09:30             │     │
+│ │ 获得积分：+15              │     │
+│ │                             │     │
+│ │ 附件：📹 打卡视频.mp4        │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 提交记录                            │
+│ ┌─────────────────────────────┐     │
+│ │ <SubmitRecord /> × N        │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 操作按钮                            │
+│ [立即打卡]  [分享]                   │
+└─────────────────────────────────────┘
+```
+
+SubmitRecord 组件样式：
+```
+┌─────────────────────────────────────┐
+│ 01.19                       09:15  │
+│ ✅ 已完成                    +10分  │
+│ 📹 打卡视频.mp4                     │
+│ 备注：今天练习得很认真...            │
+└─────────────────────────────────────┘
+```
+
+API：GET /api/task/:id
+
+═══════════════════════════════════════════════════════════════
+【提交任务页 - 完整布局】
+═══════════════════════════════════════════════════════════════
+
+页面路径：src/pages/student/task-submit.vue
+
+布局结构：
+```
+┌─────────────────────────────────────┐
+│ Navbar                              │
+│ 返回        提交任务                 │
+├─────────────────────────────────────┤
+│ 任务信息                            │
+│ ┌─────────────────────────────┐     │
+│ │ 📝 《演讲基础》每日打卡        │     │
+│ │ 01.20  第5天                 │     │
+│ │                             │     │
+│ │ 今日剩余提交次数：0/1         │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 文件上传                            │
+│ ┌─────────────────────────────┐     │
+│ │                             │     │
+│ │     📤                       │     │
+│ │   [上传视频/音频/图片]        │     │
+│ │                             │     │
+│ │ 支持：mp4, mp3, jpg, png    │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ 已上传文件列表                       │
+│ ┌─────────────────────────────┐     │
+│ │ 📹 打卡视频.mp4         [×] │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 备注                                │
+│ ┌─────────────────────────────┐     │
+│ │ 请输入您的练习心得...        │     │
+│ │                             │     │
+│ └─────────────────────────────┘     │
+│ 字数：0/500                         │
+├─────────────────────────────────────┤
+│ [提交任务]                          │
+└─────────────────────────────────────┘
+```
+
+提交逻辑（必须处理）：
+```javascript
+async function handleSubmit() {
+  // 1. 验证
+  if (fileList.value.length === 0) {
+    uni.showToast({ title: '请上传文件', icon: 'none' });
+    return;
+  }
+  
+  // 2. 检查提交次数限制
+  const task = taskStore.currentTask;
+  if (task.todaySubmitCount >= task.frequency.timesPerDay) {
+    uni.showToast({ title: '今日提交次数已用完', icon: 'none' });
+    return;
+  }
+  
+  // 3. 禁用按钮
+  submitting.value = true;
+  
+  try {
+    // 4. 调用 API
+    const result = await taskStore.submitTask({
+      taskId: taskId,
+      files: fileList.value,
+      remark: remark.value
+    });
+    
+    // 5. 成功提示
+    uni.showToast({ title: '提交成功', icon: 'success' });
+    
+    // 6. 显示获得积分
+    if (result.points > 0) {
+      setTimeout(() => {
+        uni.showModal({
+          title: '获得积分',
+          content: `+${result.points}积分`,
+          showCancel: false
+        });
+      }, 1500);
+    }
+    
+    // 7. 跳转
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 2000);
+    
+  } catch (error) {
+    uni.showToast({ title: error.message || '提交失败', icon: 'none' });
+  } finally {
+    submitting.value = false;
+  }
+}
+```
+
+API：POST /api/task/submit
+
+═══════════════════════════════════════════════════════════════
+【分享面板 - 完整布局】
+═══════════════════════════════════════════════════════════════
+
+页面路径：src/pages/student/task-share.vue（弹窗形式）
+
+布局结构：
+```
+┌─────────────────────────────────────┐
+│ 分享到微信                          │
+├─────────────────────────────────────┤
+│ 分享内容预览                         │
+│ ┌─────────────────────────────┐     │
+│ │ 🔥 我在百里口才完成了《演讲基础》  │     │
+│ │ 第5天打卡，连续打卡7天！        │     │
+│ │                             │     │
+│ │ [图片预览]                   │     │
+│ │                             │     │
+│ │ 让演说成为孩子自信生长的力量！   │     │
+│ └─────────────────────────────┘     │
+├─────────────────────────────────────┤
+│ 分享方式                            │
+│ ┌─────────────────────────────┐     │
+│ │ 💬 微信聊天                 │     │
+│ ├─────────────────────────────┤     │
+│ │ 🕳️ 微信朋友圈               │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ 今日朋友圈分享次数：1/1              │
+│                                     │
+│ [取消]                              │
+└─────────────────────────────────────┘
+```
+
+分享逻辑（必须处理）：
+```javascript
+async function handleShare(type) {
+  // type: 'session' | 'timeline'
+  
+  if (type === 'timeline') {
+    // 检查朋友圈分享次数
+    if (!taskStore.currentTask.canShare) {
+      uni.showToast({ title: '今日朋友圈分享次数已用完', icon: 'none' });
+      return;
+    }
+  }
+  
+  try {
+    // 生成分享内容
+    const shareData = {
+      title: `🔥 我在百里口才完成了《${task.title}》第${task.submitCount}天打卡！`,
+      path: '/pages/student/task-detail?id=' + taskId,
+      imageUrl: posterUrl.value,
+      extra: {
+        scene: type === 'session' ? 'WXSceneSession' : 'WXSceneTimeline'
+      }
+    };
+    
+    // 调用微信分享
+    await uni.share(shareData);
+    
+    // 记录分享
+    await taskStore.recordShare({ taskId, type });
+    
+    // 获得积分（仅朋友圈）
+    if (type === 'timeline') {
+      uni.showToast({ title: '分享成功 +5积分', icon: 'success' });
+    }
+    
+  } catch (error) {
+    if (error.errMsg !== 'cancel') {
+      uni.showToast({ title: '分享失败', icon: 'none' });
+    }
+  }
+}
+```
+
+API：POST /api/task/share
+
+═══════════════════════════════════════════════════════════════
+【taskStore - 完整实现】
+═══════════════════════════════════════════════════════════════
+
+路径：src/store/task.js
+
+```javascript
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import api from '@/api/task.js';
+
+export const useTaskStore = defineStore('task', () => {
+  // 状态
+  const taskList = ref([]);
+  const currentTask = ref(null);
+  const submitRecords = ref([]);
+  const stats = ref({
+    pendingCount: 0,
+    streakDays: 0,
+    totalDays: 0,
+    longestStreak: 0,
+    totalPoints: 0,
+    todayChecked: false
+  });
+  const loading = ref(false);
+  const filter = ref({
+    type: '',        // homework | checkin | ''
+    classId: '',
+    status: ''        // active | completed | ''
+  });
+  
+  // 计算属性
+  const homeworkList = computed(() => 
+    taskList.value.filter(t => t.type === 'homework')
+  );
+  
+  const checkinList = computed(() => 
+    taskList.value.filter(t => t.type === 'checkin')
+  );
+  
+  const pendingList = computed(() => 
+    taskList.value.filter(t => t.status === 'active')
+  );
+  
+  const completedList = computed(() => 
+    taskList.value.filter(t => t.status === 'completed')
+  );
+  
+  // 方法
+  async function fetchTaskList(params = {}) {
+    loading.value = true;
+    try {
+      const data = await api.task.list({
+        ...filter.value,
+        ...params
+      });
+      taskList.value = data.list;
+      if (data.stats) {
+        stats.value = { ...stats.value, ...data.stats };
+      }
+    } catch (error) {
+      uni.showToast({ title: '获取任务列表失败', icon: 'none' });
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  async function fetchTaskDetail(id) {
+    loading.value = true;
+    try {
+      const data = await api.task.detail(id);
+      currentTask.value = data;
+      return data;
+    } catch (error) {
+      uni.showToast({ title: '获取任务详情失败', icon: 'none' });
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  async function fetchSubmitRecords(taskId, params = {}) {
+    loading.value = true;
+    try {
+      const data = await api.task.records(taskId, params);
+      submitRecords.value = data;
+    } catch (error) {
+      uni.showToast({ title: '获取提交记录失败', icon: 'none' });
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  async function submitTask(params) {
+    const data = await api.task.submit(params);
+    // 刷新列表
+    await fetchTaskList();
+    // 刷新详情
+    if (currentTask.value) {
+      await fetchTaskDetail(currentTask.value.id);
+    }
+    return data;
+  }
+  
+  async function recordShare(params) {
+    const data = await api.task.share(params);
+    // 刷新任务详情
+    if (currentTask.value) {
+      await fetchTaskDetail(currentTask.value.id);
+    }
+    return data;
+  }
+  
+  async function fetchStats() {
+    try {
+      const data = await api.task.stats();
+      stats.value = data;
+    } catch (error) {
+      uni.showToast({ title: '获取统计失败', icon: 'none' });
+    }
+  }
+  
+  function setFilter(newFilter) {
+    filter.value = { ...filter.value, ...newFilter };
+    fetchTaskList();
+  }
+  
+  function clearCurrent() {
+    currentTask.value = null;
+    submitRecords.value = [];
+  }
+  
+  return {
+    // 状态
+    taskList,
+    currentTask,
+    submitRecords,
+    stats,
+    loading,
+    filter,
+    // 计算属性
+    homeworkList,
+    checkinList,
+    pendingList,
+    completedList,
+    // 方法
+    fetchTaskList,
+    fetchTaskDetail,
+    fetchSubmitRecords,
+    submitTask,
+    recordShare,
+    fetchStats,
+    setFilter,
+    clearCurrent
+  };
+});
+```
+
+═══════════════════════════════════════════════════════════════
+【API 文件 - task.js】
+═══════════════════════════════════════════════════════════════
+
+路径：src/api/task.js
+
+```javascript
+import { get, post } from './request.js';
+
+export default {
+  task: {
+    // 获取任务列表
+    list: (params) => get('/api/task/list', params),
+    
+    // 获取任务详情
+    detail: (id) => get(`/api/task/${id}`),
+    
+    // 获取提交记录
+    records: (taskId, params) => get(`/api/task/${taskId}/records`, params),
+    
+    // 提交任务
+    submit: (data) => post('/api/task/submit', data),
+    
+    // 记录分享
+    share: (data) => post('/api/task/share', data),
+    
+    // 获取打卡统计
+    stats: () => get('/api/task/checkin/stats')
+  }
+};
+```
+
+路径：src/api/checkin.js
+
+```javascript
+import { get } from './request.js';
+
+// 仅保留打卡统计相关接口
+
+export const getCheckinStats = () => {
+  return get('/checkin/stats')
+}
+```
+
+═══════════════════════════════════════════════════════════════
+【质量验收标准 - 阶段3 特别严格】
+═══════════════════════════════════════════════════════════════
+
+阶段3 完成后必须满足（重点检查）：
+
+1. ✅ 任务类型判断完整（作业/打卡）
+2. ✅ 任务状态显示正确
+3. ✅ 频次模式判断正确（每日一次/每日多次/每周固定）
+4. ✅ 提交次数限制正确
+5. ✅ 分享次数限制正确
+6. ✅ 提交后列表刷新
+7. ✅ 提交后统计刷新
+8. ✅ 重复提交防护
+9. ✅ 补打卡逻辑正确（打卡可跳过，作业不可跳）
+10. ✅ 无网络错误处理
+11. ✅ 超时处理
+12. ✅ Loading 状态正确
+13. ✅ 空状态正确显示
+14. ✅ 按钮禁用状态正确
+15. ✅ API 错误提示正确
+16. ✅ 积分获取逻辑正确
+
+【Bug 高发场景 - 必须测试】
+1. 每日多次打卡时提交次数限制
+2. 打卡后立即查看统计
+3. 朋友圈分享次数限制（每日1次）
+4. 作业补交顺序验证
+5. 网络异常时的状态回滚
+6. 任务结束后显示状态
+```
+
+---

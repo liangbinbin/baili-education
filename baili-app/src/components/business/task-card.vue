@@ -1,149 +1,358 @@
-<template>
-  <view class="bl-task-card" @click="handleClick">
-    <view class="bl-task-card__header">
-      <view class="bl-task-card__type" :class="`bl-task-card__type--${type}`">
-        <text v-if="type === 'homework'">作业</text>
-        <text v-else>打卡</text>
-      </view>
-      <view v-if="status === 'expired'" class="bl-task-card__expired">已过期</view>
-    </view>
-    <view class="bl-task-card__body">
-      <text class="bl-task-card__title">{{ title }}</text>
-      <text v-if="description" class="bl-task-card__desc">{{ description }}</text>
-    </view>
-    <view class="bl-task-card__footer">
-      <view class="bl-task-card__time">
-        <text>截止时间：{{ deadline }}</text>
-      </view>
-      <view class="bl-task-card__status" :class="`bl-task-card__status--${status}`">
-        <text v-if="status === 'pending'">待完成</text>
-        <text v-else-if="status === 'submitted'">已提交</text>
-        <text v-else-if="status === 'expired'">已过期</text>
-      </view>
-    </view>
-  </view>
-</template>
+&lt;template&gt;
+  &lt;view class="task-card" @click="handleClick"&gt;
+    &lt;view class="task-header"&gt;
+      &lt;view class="task-title-wrapper"&gt;
+        &lt;view class="task-type" :class="task.type"&gt;
+          &lt;text v-if="task.type === 'homework'"&gt;📝 作业&lt;/text&gt;
+          &lt;text v-else&gt;🔥 打卡&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view v-if="task.frequency" class="task-frequency" :class="task.frequency.mode"&gt;
+          &lt;text v-if="task.frequency.mode === 'daily_once'"&gt;每日一次&lt;/text&gt;
+          &lt;text v-else-if="task.frequency.mode === 'daily_multi'"&gt;每日多次&lt;/text&gt;
+          &lt;text v-else&gt;每周固定&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view v-if="task.streakDays &gt; 1" class="task-streak"&gt;
+          &lt;text&gt;🔥 {{ task.streakDays }}天连续&lt;/text&gt;
+        &lt;/view&gt;
+        &lt;view class="task-status" :class="statusInfo.class"&gt;
+          &lt;text&gt;{{ statusInfo.text }}&lt;/text&gt;
+        &lt;/view&gt;
+      &lt;/view&gt;
+      &lt;text class="task-title"&gt;{{ task.title }}&lt;/text&gt;
+    &lt;/view&gt;
 
-<script setup>
+    &lt;view class="task-info"&gt;
+      &lt;view class="info-item"&gt;
+        &lt;text class="info-label"&gt;📅&lt;/text&gt;
+        &lt;text class="info-text"&gt;{{ formatDate(task.startDate) }} - {{ formatDate(task.endDate) }}&lt;/text&gt;
+      &lt;/view&gt;
+      &lt;view v-if="task.className" class="info-item"&gt;
+        &lt;text class="info-label"&gt;👥&lt;/text&gt;
+        &lt;text class="info-text"&gt;{{ task.className }}&lt;/text&gt;
+      &lt;/view&gt;
+    &lt;/view&gt;
+
+    &lt;view v-if="task.totalDays !== undefined" class="progress-section"&gt;
+      &lt;view class="progress-info"&gt;
+        &lt;text class="progress-text"&gt;进度：{{ task.submitCount || 0 }}/{{ task.totalDays }}&lt;/text&gt;
+        &lt;text v-if="task.points" class="points-text"&gt;+{{ task.points }}积分&lt;/text&gt;
+      &lt;/view&gt;
+      &lt;view class="progress-bar"&gt;
+        &lt;view class="progress-fill" :style="{ width: progressPercent + '%' }"&gt;&lt;/view&gt;
+      &lt;/view&gt;
+    &lt;/view&gt;
+
+    &lt;view class="task-actions" v-if="showActions"&gt;
+      &lt;view v-for="action in actions" :key="action.type" 
+            class="action-btn" 
+            :class="action.class"
+            @click.stop="handleAction(action)"&gt;
+        &lt;text&gt;{{ action.text }}&lt;/text&gt;
+      &lt;/view&gt;
+    &lt;/view&gt;
+  &lt;/view&gt;
+&lt;/template&gt;
+
+&lt;script setup&gt;
+import { computed } from 'vue'
+
 const props = defineProps({
-  type: {
-    type: String,
-    default: 'homework',
-    validator: (val) => ['homework', 'checkin'].includes(val)
+  task: {
+    type: Object,
+    required: true
   },
-  title: {
-    type: String,
-    default: ''
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  deadline: {
-    type: String,
-    default: ''
-  },
-  status: {
-    type: String,
-    default: 'pending',
-    validator: (val) => ['pending', 'submitted', 'expired'].includes(val)
+  showActions: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'submit', 'share'])
 
-const handleClick = () => {
-  emit('click')
+const formatDate = (dateStr) =&gt; {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${month}.${day}`
 }
-</script>
 
-<style lang="scss" scoped>
+const progressPercent = computed(() =&gt; {
+  if (!props.task.totalDays) return 0
+  const count = props.task.submitCount || 0
+  return Math.min(100, (count / props.task.totalDays) * 100)
+})
+
+const statusInfo = computed(() =&gt; {
+  const task = props.task
+  const now = new Date()
+  const startDate = new Date(task.startDate)
+  const endDate = new Date(task.endDate)
+
+  if (now &lt; startDate) {
+    return { text: '未开始', class: 'not-started' }
+  }
+  if (now &gt; endDate) {
+    return { text: '已结束', class: 'ended' }
+  }
+  if (task.submitCount &gt;= task.totalDays) {
+    return { text: '已完成', class: 'completed' }
+  }
+  return { text: '进行中', class: 'active' }
+})
+
+const actions = computed(() =&gt; {
+  const task = props.task
+  const status = statusInfo.value
+  const result = []
+
+  if (status.class === 'not-started' || status.class === 'ended') {
+    result.push({ text: status.text, type: 'disabled', class: 'disabled' })
+    return result
+  }
+
+  if (status.class === 'completed') {
+    result.push({ text: '查看详情', type: 'detail', class: 'outline' })
+    if (task.type === 'homework') {
+      result.push({ text: '分享', type: 'share', class: 'outline' })
+    }
+    return result
+  }
+
+  const canSubmit = task.canSubmit !== false && (task.todaySubmitCount || 0) &lt; (task.frequency?.timesPerDay || 1)
+  
+  if (canSubmit) {
+    result.push({ 
+      text: task.type === 'checkin' ? '立即打卡' : '立即完成', 
+      type: 'submit', 
+      class: 'primary' 
+    })
+  } else {
+    result.push({ text: '今日已完成', type: 'disabled', class: 'disabled' })
+  }
+
+  if (task.type === 'checkin') {
+    result.push({ text: '分享', type: 'share', class: 'outline' })
+  }
+
+  return result
+})
+
+const handleClick = () =&gt; {
+  emit('click', props.task)
+}
+
+const handleAction = (action) =&gt; {
+  if (action.type === 'submit') {
+    emit('submit', props.task)
+  } else if (action.type === 'share') {
+    emit('share', props.task)
+  } else if (action.type === 'detail') {
+    emit('click', props.task)
+  }
+}
+&lt;/script&gt;
+
+&lt;style lang="scss" scoped&gt;
 @import '@/styles/variables.scss';
 
-.bl-task-card {
+.task-card {
   background: $color-bg-card;
   border-radius: $radius-card;
   padding: $spacing-xl;
   margin-bottom: $spacing-lg;
   box-shadow: $shadow-default;
 
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .task-header {
     margin-bottom: $spacing-md;
-  }
 
-  &__type {
-    display: inline-flex;
-    align-items: center;
-    padding: $spacing-xs $spacing-sm;
-    border-radius: $radius-tag;
-    font-size: $font-size-caption;
-    font-weight: $font-weight-medium;
-
-    &--homework {
-      background: $color-primary-light;
-      color: $color-primary;
+    .task-title-wrapper {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-sm;
+      margin-bottom: $spacing-md;
+      align-items: center;
     }
 
-    &--checkin {
-      background: $color-checkin-light;
-      color: $color-checkin;
+    .task-type {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+
+      &amp;.homework {
+        background: $color-primary-light;
+        color: $color-primary;
+      }
+
+      &amp;.checkin {
+        background: $color-checkin-light;
+        color: $color-checkin;
+      }
+    }
+
+    .task-frequency {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+
+      &amp;.daily_once {
+        background: $color-info-light;
+        color: $color-info;
+      }
+
+      &amp;.daily_multi {
+        background: $color-success-light;
+        color: $color-success;
+      }
+
+      &amp;.weekly {
+        background: rgba(168, 85, 247, 0.1);
+        color: #a855f7;
+      }
+    }
+
+    .task-streak {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      color: white;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+    }
+
+    .task-status {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+
+      &amp;.not-started {
+        background: $color-border-light;
+        color: $color-text-placeholder;
+      }
+
+      &amp;.active {
+        background: $color-primary-light;
+        color: $color-primary;
+      }
+
+      &amp;.completed {
+        background: $color-success-light;
+        color: $color-success;
+      }
+
+      &amp;.ended {
+        background: $color-border-light;
+        color: $color-text-placeholder;
+      }
+    }
+
+    .task-title {
+      display: block;
+      font-size: $font-size-h3;
+      font-weight: $font-weight-semibold;
+      color: $color-text-primary;
+      line-height: 1.5;
     }
   }
 
-  &__expired {
-    font-size: $font-size-caption;
-    color: $color-danger;
-  }
-
-  &__body {
+  .task-info {
     margin-bottom: $spacing-md;
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      margin-bottom: $spacing-xs;
+
+      .info-label {
+        font-size: 28rpx;
+      }
+
+      .info-text {
+        font-size: $font-size-body;
+        color: $color-text-secondary;
+      }
+    }
   }
 
-  &__title {
-    display: block;
-    font-size: $font-size-h3;
-    font-weight: $font-weight-semibold;
-    color: $color-text-primary;
-    margin-bottom: $spacing-xs;
+  .progress-section {
+    margin-bottom: $spacing-md;
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: $spacing-sm;
+
+      .progress-text {
+        font-size: $font-size-body;
+        color: $color-text-secondary;
+      }
+
+      .points-text {
+        font-size: $font-size-body;
+        font-weight: $font-weight-semibold;
+        color: $color-primary;
+      }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 12rpx;
+      background: $color-border-light;
+      border-radius: 999rpx;
+      overflow: hidden;
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, $color-primary 0%, #ff8a5b 100%);
+        border-radius: 999rpx;
+        transition: width 0.3s ease;
+      }
+    }
   }
 
-  &__desc {
-    display: block;
-    font-size: $font-size-caption;
-    color: $color-text-secondary;
-  }
-
-  &__footer {
+  .task-actions {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: $spacing-md;
-    border-top: 1px solid $color-border-light;
-  }
+    gap: $spacing-md;
 
-  &__time {
-    font-size: $font-size-caption;
-    color: $color-text-placeholder;
-  }
+    .action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: $spacing-md $spacing-xl;
+      border-radius: $radius-button;
+      font-size: $font-size-body;
+      font-weight: $font-weight-medium;
 
-  &__status {
-    font-size: $font-size-caption;
-    font-weight: $font-weight-medium;
+      &amp;.primary {
+        background: linear-gradient(135deg, $color-primary 0%, #ff8a5b 100%);
+        color: $color-text-white;
+      }
 
-    &--pending {
-      color: $color-primary;
-    }
+      &amp;.outline {
+        background: transparent;
+        border: 2rpx solid $color-border;
+        color: $color-text-primary;
+      }
 
-    &--submitted {
-      color: $color-success;
-    }
-
-    &--expired {
-      color: $color-text-placeholder;
+      &amp;.disabled {
+        background: $color-border-light;
+        color: $color-text-placeholder;
+      }
     }
   }
 }
-</style>
+&lt;/style&gt;

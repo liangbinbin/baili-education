@@ -1,174 +1,196 @@
-<template>
-  <view class="bl-submit-record">
-    <view class="bl-submit-record__avatar">
-      <image :src="avatar" mode="aspectFill" class="bl-submit-record__img" />
-    </view>
-    <view class="bl-submit-record__content">
-      <view class="bl-submit-record__header">
-        <text class="bl-submit-record__name">{{ name }}</text>
-        <text class="bl-submit-record__time">{{ time }}</text>
-      </view>
-      <view v-if="content" class="bl-submit-record__text">{{ content }}</view>
-      <view v-if="images && images.length > 0" class="bl-submit-record__images">
-        <image
-          v-for="(img, index) in images"
-          :key="index"
-          :src="img"
-          class="bl-submit-record__image"
-          mode="aspectFill"
-        />
-      </view>
-      <view v-if="audio" class="bl-submit-record__audio">
-        <view class="bl-submit-record__audio-wave">
-          <view v-for="i in 5" :key="i" class="bl-submit-record__audio-bar"></view>
-        </view>
-        <text class="bl-submit-record__audio-duration">{{ audioDuration }}</text>
-      </view>
-    </view>
-  </view>
-</template>
+&lt;template&gt;
+  &lt;view class="submit-record"&gt;
+    &lt;view class="record-header"&gt;
+      &lt;view class="record-date"&gt;
+        &lt;text class="date-text"&gt;{{ formatDate(record.createdAt || record.date) }}&lt;/text&gt;
+        &lt;text v-if="record.time" class="time-text"&gt;{{ record.time }}&lt;/text&gt;
+      &lt;/view&gt;
+      &lt;view class="record-status" :class="record.status || 'completed'"&gt;
+        &lt;text&gt;{{ getStatusText() }}&lt;/text&gt;
+      &lt;/view&gt;
+      &lt;text v-if="record.points || record.earnedPoints" class="record-points"&gt;+{{ record.points || record.earnedPoints }}积分&lt;/text&gt;
+    &lt;/view&gt;
 
-<script setup>
-defineProps({
-  avatar: {
-    type: String,
-    default: ''
-  },
-  name: {
-    type: String,
-    default: ''
-  },
-  time: {
-    type: String,
-    default: ''
-  },
-  content: {
-    type: String,
-    default: ''
-  },
-  images: {
-    type: Array,
-    default: () => []
-  },
-  audio: {
-    type: String,
-    default: ''
-  },
-  audioDuration: {
-    type: String,
-    default: ''
+    &lt;view v-if="record.files &amp;&amp; record.files.length &gt; 0" class="record-files"&gt;
+      &lt;view v-for="(file, index) in record.files" :key="index" class="file-item"&gt;
+        &lt;text class="file-icon"&gt;{{ getFileIcon(file.type) }}&lt;/text&gt;
+        &lt;text class="file-name"&gt;{{ file.name || getFileName(file) }}&lt;/text&gt;
+      &lt;/view&gt;
+    &lt;/view&gt;
+
+    &lt;view v-if="record.content" class="record-content"&gt;
+      &lt;text&gt;{{ record.content }}&lt;/text&gt;
+    &lt;/view&gt;
+
+    &lt;view v-if="record.gradedPoints !== undefined" class="record-grade"&gt;
+      &lt;view class="grade-info"&gt;
+        &lt;text class="grade-label"&gt;老师评价&lt;/text&gt;
+        &lt;text class="grade-points"&gt;获得积分：{{ record.gradedPoints }}/{{ record.points || 100 }}&lt;/text&gt;
+      &lt;/view&gt;
+      &lt;text v-if="record.comment" class="grade-comment"&gt;{{ record.comment }}&lt;/text&gt;
+    &lt;/view&gt;
+  &lt;/view&gt;
+&lt;/template&gt;
+
+&lt;script setup&gt;
+const props = defineProps({
+  record: {
+    type: Object,
+    required: true
   }
 })
-</script>
 
-<style lang="scss" scoped>
+const formatDate = (dateStr) =&gt; {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const day = date.getDate().toString().padStart(2, '0')
+  return `${month}.${day}`
+}
+
+const getStatusText = () =&gt; {
+  const status = props.record.status
+  if (status === 'graded') return '已批改'
+  if (status === 'pending') return '待批改'
+  return '已完成'
+}
+
+const getFileIcon = (type) =&gt; {
+  if (type?.includes('video') || type === 'video') return '📹'
+  if (type?.includes('audio') || type === 'audio') return '🎵'
+  if (type?.includes('image') || type === 'image') return '🖼️'
+  return '📄'
+}
+
+const getFileName = (file) =&gt; {
+  if (file.name) return file.name
+  if (file.url) {
+    const parts = file.url.split('/')
+    return parts[parts.length - 1] || '文件'
+  }
+  return '文件'
+}
+&lt;/script&gt;
+
+&lt;style lang="scss" scoped&gt;
 @import '@/styles/variables.scss';
 
-.bl-submit-record {
-  display: flex;
-  padding: $spacing-xl 0;
-  border-bottom: 1px solid $color-border-light;
+.submit-record {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-md;
 
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &__avatar {
-    flex-shrink: 0;
-    margin-right: $spacing-md;
-  }
-
-  &__img {
-    width: 80rpx;
-    height: 80rpx;
-    border-radius: 50%;
-  }
-
-  &__content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  &__header {
+  .record-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: $spacing-xs;
-  }
-
-  &__name {
-    font-size: $font-size-body;
-    font-weight: $font-weight-medium;
-    color: $color-text-primary;
-  }
-
-  &__time {
-    font-size: $font-size-caption;
-    color: $color-text-placeholder;
-  }
-
-  &__text {
-    font-size: $font-size-body;
-    color: $color-text-secondary;
-    line-height: 1.6;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__images {
-    display: flex;
+    margin-bottom: $spacing-md;
     flex-wrap: wrap;
-    gap: $spacing-xs;
-    margin-bottom: $spacing-sm;
+    gap: $spacing-sm;
+
+    .record-date {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+
+      .date-text {
+        font-size: $font-size-h3;
+        font-weight: $font-weight-semibold;
+        color: $color-text-primary;
+      }
+
+      .time-text {
+        font-size: $font-size-caption;
+        color: $color-text-secondary;
+      }
+    }
+
+    .record-status {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $radius-tag;
+      font-size: $font-size-caption;
+      font-weight: $font-weight-medium;
+
+      &amp;.completed {
+        background: $color-success-light;
+        color: $color-success;
+      }
+
+      &amp;.pending {
+        background: $color-warning-light;
+        color: $color-warning;
+      }
+
+      &amp;.graded {
+        background: $color-primary-light;
+        color: $color-primary;
+      }
+    }
+
+    .record-points {
+      font-size: $font-size-body;
+      font-weight: $font-weight-semibold;
+      color: $color-primary;
+    }
   }
 
-  &__image {
-    width: 160rpx;
-    height: 160rpx;
-    border-radius: $radius-sm;
-  }
+  .record-files {
+    margin-bottom: $spacing-md;
 
-  &__audio {
-    display: flex;
-    align-items: center;
-    background: $color-primary-light;
-    padding: $spacing-sm $spacing-md;
-    border-radius: $radius-sm;
-    width: fit-content;
-  }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      padding: $spacing-sm 0;
 
-  &__audio-wave {
-    display: flex;
-    align-items: flex-end;
-    gap: 4rpx;
-    margin-right: $spacing-sm;
-  }
+      .file-icon {
+        font-size: 36rpx;
+      }
 
-  &__audio-bar {
-    width: 6rpx;
-    background: $color-primary;
-    border-radius: 3rpx;
-
-    @for $i from 1 through 5 {
-      &:nth-child(#{$i}) {
-        height: 20rpx + ($i - 1) * 10rpx;
-        animation: audioWave 0.8s ease-in-out infinite;
-        animation-delay: ($i - 1) * 0.15s;
+      .file-name {
+        font-size: $font-size-body;
+        color: $color-text-primary;
       }
     }
   }
 
-  &__audio-duration {
-    font-size: $font-size-caption;
-    color: $color-primary;
+  .record-content {
+    margin-bottom: $spacing-md;
+    font-size: $font-size-body;
+    color: $color-text-secondary;
+    line-height: 1.6;
   }
-}
 
-@keyframes audioWave {
-  0%, 100% {
-    transform: scaleY(1);
-  }
-  50% {
-    transform: scaleY(0.5);
+  .record-grade {
+    padding-top: $spacing-md;
+    border-top: 2rpx solid $color-border-light;
+
+    .grade-info {
+      margin-bottom: $spacing-sm;
+
+      .grade-label {
+        display: block;
+        font-size: $font-size-body;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        margin-bottom: $spacing-xs;
+      }
+
+      .grade-points {
+        font-size: $font-size-h3;
+        font-weight: $font-weight-semibold;
+        color: $color-primary;
+      }
+    }
+
+    .grade-comment {
+      font-size: $font-size-body;
+      color: $color-text-secondary;
+      line-height: 1.6;
+    }
   }
 }
-</style>
+&lt;/style&gt;
