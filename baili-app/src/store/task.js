@@ -1,196 +1,305 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import api from '@/api/task.js'
-import { getCheckinStats } from '@/api/checkin.js'
+import { 
+  getTaskList, 
+  getTaskDetail, 
+  submitTask, 
+  submitMakeupTask, 
+  recordShare, 
+  shareSummary,
+  gradeTask, 
+  getTaskProgress 
+} from '@/api/task'
+import { getCheckinStats } from '@/api/checkin'
+import storage from '@/utils/storage'
 
-export const useTaskStore = defineStore('task', () => {
-  const taskList = ref([])
-  const currentTask = ref(null)
-  const currentTaskProgress = ref(null)
-  const submitRecords = ref([])
-  const checkinStats = ref({
-    total: 0,
-    streak: 0,
-    maxStreak: 0,
-    today: 0,
-    shareStats: {
-      totalChatShares: 0,
-      totalMomentsShares: 0,
-      momentsPointsEarned: 0,
-      completionBonusEarned: 0
-    }
-  })
-  const loading = ref(false)
-  const pagination = ref({
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    totalPages: 0
-  })
-  const filter = ref({
-    type: '',
-    classId: '',
-    status: '',
-    date: ''
-  })
-
-  const homeworkList = computed(() => 
-    taskList.value.filter(t => t.type === 'homework')
-  )
-
-  const checkinList = computed(() => 
-    taskList.value.filter(t => t.type === 'checkin')
-  )
-
-  const pendingList = computed(() => 
-    taskList.value.filter(t => t.status === 'active')
-  )
-
-  const completedList = computed(() => 
-    taskList.value.filter(t => 
-      t.status === 'ended' || t.progress?.completedDays >= t.progress?.totalDays
-    )
-  )
-
-  const fetchTaskList = async (params = {}) => {
-    loading.value = true
-    try {
-      const data = await api.getTaskList({
-        ...filter.value,
-        ...params
-      })
-      taskList.value = data.list || data.data?.list || data.data || []
-      if (data.pagination) {
-        pagination.value = data.pagination
-      } else if (data.data?.pagination) {
-        pagination.value = data.data.pagination
+export const useTaskStore = defineStore('task', {
+  // ========== State ==========
+  state: () => ({
+    taskList: [],
+    currentTask: null,
+    currentTaskProgress: null,
+    submitRecords: [],
+    checkinStats: {
+      total: 0,
+      streak: 0,
+      maxStreak: 0,
+      today: 0,
+      shareStats: {
+        totalChatShares: 0,
+        totalMomentsShares: 0,
+        momentsPointsEarned: 0,
+        completionBonusEarned: 0
       }
-      return data
-    } catch (error) {
-      console.error('获取任务列表失败:', error)
-      throw error
-    } finally {
-      loading.value = false
+    },
+    filters: {
+      type: '',         // '' | 'homework' | 'checkin'
+      classId: '',
+      status: '',       // '' | 'pending' | 'active' | 'completed'
+      date: ''
+    },
+    pagination: {
+      page: 1,
+      pageSize: 10,
+      total: 0,
+      totalPages: 0
+    },
+    loading: false
+  }),
+  
+  // ========== Getters ==========
+  getters: {
+    // 按类型筛选
+    homeworkList: (state) => state.taskList.filter(t => t.type === 'homework'),
+    checkinList: (state) => state.taskList.filter(t => t.type === 'checkin'),
+    
+    // 按状态筛选
+    pendingList: (state) => state.taskList.filter(t => {
+      const now = new Date()
+      const startDate = new Date(t.startDate)
+      const endDate = new Date(t.endDate)
+      if (now < startDate || now > endDate) return false
+      return t.progress?.completedDays < t.progress?.totalDays
+    }),
+    completedList: (state) => state.taskList.filter(t => {
+      const now = new Date()
+      const endDate = new Date(t.endDate)
+      if (now > endDate) return true
+      return t.progress?.completedDays >= t.progress?.totalDays
+    }),
+    
+    // 统计
+    pendingCount: (state) => state.taskList.filter(t => {
+      const now = new Date()
+      const startDate = new Date(t.startDate)
+      const endDate = new Date(t.endDate)
+      if (now < startDate || now > endDate) return false
+      return t.progress?.completedDays < t.progress?.totalDays
+    }).length,
+    
+    completedCount: (state) => state.taskList.filter(t => {
+      const now = new Date()
+      const endDate = new Date(t.endDate)
+      if (now > endDate) return true
+      return t.progress?.completedDays >= t.progress?.totalDays
+    }).length,
+    
+    isEmpty: (state) => state.taskList.length === 0
+  },
+  
+  // ========== Actions ==========
+  actions: {
+    setFilters(filters) {
+      this.filters = { ...this.filters, ...filters }
+      this.pagination.page = 1
+    },
+    
+    async fetchTasks(append = false) {
+      this.loading = true
+      
+      // 尝试获取缓存
+      const cacheKey = `task-${this.filters.type}-${this.filters.status}`
+      const cached = storage.get(cacheKey)
+      
+      if (cached && !append && Date.now() - cached.expire < 30000) {
+        this.taskList = cached.data.list
+        this.pagination = cached.data.pagination || this.pagination
+        this.loading = false
+        return
+      }
+      
+      try {
+        const result = await getTaskList({
+          type: this.filters.type || undefined,
+          classId: this.filters.classId || undefined,
+          status: this.filters.status || undefined,
+          date: this.filters.date || undefined,
+          page: this.pagination.page,
+          pageSize: this.pagination.pageSize
+        })
+        
+        const list = result.list || result.data?.list || result.data || []
+        const pagination = result.pagination || result.data?.pagination
+        
+        if (append) {
+          this.taskList.push(...list)
+        } else {
+          this.taskList = list
+        }
+        
+        if (pagination) {
+          this.pagination = pagination
+        }
+        
+        // 缓存结果
+        storage.set(cacheKey, {
+          data: { list: this.taskList, pagination: this.pagination },
+          expire: Date.now()
+        })
+      } catch (error) {
+        console.error('获取任务列表失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async fetchTaskDetail(id) {
+      this.loading = true
+      try {
+        const result = await getTaskDetail(id)
+        this.currentTask = result
+        return result
+      } catch (error) {
+        console.error('获取任务详情失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async fetchTaskProgress(id) {
+      this.loading = true
+      try {
+        const result = await getTaskProgress(id)
+        this.currentTaskProgress = result
+        this.submitRecords = result.dailyProgress || []
+        return result
+      } catch (error) {
+        console.error('获取任务进度失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async doSubmitTask(data) {
+      this.loading = true
+      try {
+        const result = await submitTask(data)
+        
+        // 清除缓存
+        storage.remove(`task-${this.filters.type}-${this.filters.status}`)
+        
+        // 重新获取列表
+        await this.fetchTasks()
+        
+        // 更新当前任务
+        if (this.currentTask && this.currentTask._id === data.taskId) {
+          await this.fetchTaskDetail(data.taskId)
+        }
+        
+        return result
+      } catch (error) {
+        console.error('提交任务失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async doSubmitMakeupTask(data) {
+      this.loading = true
+      try {
+        const result = await submitMakeupTask(data)
+        
+        // 清除缓存
+        storage.remove(`task-${this.filters.type}-${this.filters.status}`)
+        
+        // 重新获取列表
+        await this.fetchTasks()
+        
+        // 更新当前任务
+        if (this.currentTask && this.currentTask._id === data.taskId) {
+          await this.fetchTaskDetail(data.taskId)
+        }
+        
+        return result
+      } catch (error) {
+        console.error('补交任务失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async doRecordShare(data) {
+      this.loading = true
+      try {
+        const result = await recordShare(data)
+        
+        // 更新当前任务
+        if (this.currentTask && this.currentTask._id === data.taskId) {
+          await this.fetchTaskDetail(data.taskId)
+        }
+        
+        return result
+      } catch (error) {
+        console.error('分享任务失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async doShareSummary(data) {
+      this.loading = true
+      try {
+        const result = await shareSummary(data)
+        
+        // 更新当前任务
+        if (this.currentTask && this.currentTask._id === data.taskId) {
+          await this.fetchTaskDetail(data.taskId)
+        }
+        
+        return result
+      } catch (error) {
+        console.error('总体分享失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async doGradeTask(id, data) {
+      this.loading = true
+      try {
+        const result = await gradeTask(id, data)
+        
+        // 清除缓存
+        storage.remove(`task-${this.filters.type}-${this.filters.status}`)
+        
+        // 重新获取列表
+        await this.fetchTasks()
+        
+        // 更新当前任务
+        if (this.currentTask) {
+          await this.fetchTaskDetail(this.currentTask._id)
+        }
+        
+        return result
+      } catch (error) {
+        console.error('批改任务失败:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+    
+    async fetchCheckinStats() {
+      try {
+        const result = await getCheckinStats()
+        this.checkinStats = result || this.checkinStats
+        return result
+      } catch (error) {
+        console.error('获取打卡统计失败:', error)
+        throw error
+      }
+    },
+    
+    clearCurrent() {
+      this.currentTask = null
+      this.currentTaskProgress = null
+      this.submitRecords = []
     }
-  }
-
-  const fetchTaskDetail = async (id) => {
-    loading.value = true
-    try {
-      const data = await api.getTaskDetail(id)
-      currentTask.value = data
-      return data
-    } catch (error) {
-      console.error('获取任务详情失败:', error)
-      throw error
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const fetchTaskProgress = async (id) => {
-    loading.value = true
-    try {
-      const data = await api.getTaskProgress(id)
-      currentTaskProgress.value = data
-      submitRecords.value = data.dailyProgress || []
-      return data
-    } catch (error) {
-      console.error('获取任务进度失败:', error)
-      throw error
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const doSubmitTask = async (data) => {
-    const result = await api.submitTask(data)
-    await fetchTaskList()
-    if (currentTask.value && currentTask.value._id === data.taskId) {
-      await fetchTaskDetail(data.taskId)
-    }
-    return result
-  }
-
-  const doSubmitMakeupTask = async (data) => {
-    const result = await api.submitMakeupTask(data)
-    await fetchTaskList()
-    if (currentTask.value && currentTask.value._id === data.taskId) {
-      await fetchTaskDetail(data.taskId)
-    }
-    return result
-  }
-
-  const doRecordShare = async (data) => {
-    const result = await api.recordShare(data)
-    if (currentTask.value && currentTask.value._id === data.taskId) {
-      await fetchTaskDetail(data.taskId)
-    }
-    return result
-  }
-
-  const doShareSummary = async (data) => {
-    const result = await api.shareSummary(data)
-    if (currentTask.value && currentTask.value._id === data.taskId) {
-      await fetchTaskDetail(data.taskId)
-    }
-    return result
-  }
-
-  const doGradeTask = async (id, data) => {
-    const result = await api.gradeTask(id, data)
-    await fetchTaskList()
-    if (currentTask.value) {
-      await fetchTaskDetail(currentTask.value._id)
-    }
-    return result
-  }
-
-  const fetchCheckinStats = async () => {
-    try {
-      const data = await getCheckinStats()
-      checkinStats.value = data || checkinStats.value
-      return data
-    } catch (error) {
-      console.error('获取打卡统计失败:', error)
-      throw error
-    }
-  }
-
-  const setFilter = (newFilter) => {
-    filter.value = { ...filter.value, ...newFilter }
-    fetchTaskList()
-  }
-
-  const clearCurrent = () => {
-    currentTask.value = null
-    currentTaskProgress.value = null
-    submitRecords.value = []
-  }
-
-  return {
-    taskList,
-    currentTask,
-    currentTaskProgress,
-    submitRecords,
-    checkinStats,
-    loading,
-    pagination,
-    filter,
-    homeworkList,
-    checkinList,
-    pendingList,
-    completedList,
-    fetchTaskList,
-    fetchTaskDetail,
-    fetchTaskProgress,
-    doSubmitTask,
-    doSubmitMakeupTask,
-    doRecordShare,
-    doShareSummary,
-    doGradeTask,
-    fetchCheckinStats,
-    setFilter,
-    clearCurrent
   }
 })

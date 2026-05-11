@@ -8,7 +8,7 @@
       &lt;view class="stat-item"&gt;
         &lt;text class="stat-icon"&gt;📝&lt;/text&gt;
         &lt;view class="stat-info"&gt;
-          &lt;text class="stat-value"&gt;{{ pendingList.length || 0 }}&lt;/text&gt;
+          &lt;text class="stat-value"&gt;{{ pendingCount || 0 }}&lt;/text&gt;
           &lt;text class="stat-label"&gt;待完成&lt;/text&gt;
         &lt;/view&gt;
       &lt;/view&gt;
@@ -106,6 +106,8 @@ const statusTabs = [
 
 const taskList = computed(() =&gt; taskStore.taskList)
 const pendingList = computed(() =&gt; taskStore.pendingList)
+const completedList = computed(() =&gt; taskStore.completedList)
+const pendingCount = computed(() =&gt; taskStore.pendingCount)
 const checkinStats = computed(() =&gt; taskStore.checkinStats)
 const loading = computed(() =&gt; taskStore.loading)
 
@@ -130,12 +132,14 @@ const getTaskStatus = (task) =&gt; {
 
 const setTypeFilter = (value) =&gt; {
   currentType.value = value
-  taskStore.setFilter({ type: value })
+  taskStore.setFilters({ type: value })
+  taskStore.fetchTasks()
 }
 
 const setStatusFilter = (value) =&gt; {
   currentStatus.value = value
-  taskStore.setFilter({ status: value })
+  taskStore.setFilters({ status: value })
+  taskStore.fetchTasks()
 }
 
 const goToDetail = (task) =&gt; {
@@ -177,7 +181,7 @@ const confirmShare = async (shareData) =&gt; {
 const fetchData = async () =&gt; {
   try {
     await Promise.all([
-      taskStore.fetchTaskList(),
+      taskStore.fetchTasks(),
       taskStore.fetchCheckinStats()
     ])
   } catch (error) {
