@@ -1,19 +1,19 @@
 <template>
-  <view class="bl-points-record">
-    <view class="bl-points-record__icon">{{ icon }}</view>
-    <view class="bl-points-record__content">
-      <view class="bl-points-record__header">
-        <text class="bl-points-record__title">{{ title }}</text>
+  <view class="points-record">
+    <view class="points-record__icon">{{ icon }}</view>
+    <view class="points-record__content">
+      <view class="points-record__header">
+        <text class="points-record__title">{{ title }}</text>
         <text
-          class="bl-points-record__points"
-          :class="points > 0 ? 'bl-points-record__points--plus' : 'bl-points-record__points--minus'"
+          class="points-record__points"
+          :class="points > 0 ? 'points-record__points--plus' : 'points-record__points--minus'"
         >
           {{ points > 0 ? '+' : '' }}{{ points }}
         </text>
       </view>
-      <view class="bl-points-record__footer">
-        <text class="bl-points-record__time">{{ time }}</text>
-        <text v-if="balance !== null" class="bl-points-record__balance">余额：{{ balance }}</text>
+      <view class="points-record__footer">
+        <text class="points-record__time">{{ time }}</text>
+        <text v-if="balance !== null" class="points-record__balance">余额：{{ balance }}</text>
       </view>
     </view>
   </view>
@@ -47,7 +47,7 @@ defineProps({
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.bl-points-record {
+.points-record {
   display: flex;
   align-items: center;
   padding: $spacing-lg 0;

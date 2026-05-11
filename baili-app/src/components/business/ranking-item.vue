@@ -1,20 +1,20 @@
 <template>
-  <view class="bl-ranking-item" :class="{ 'bl-ranking-item--top': rank <= 3 }">
-    <view class="bl-ranking-item__rank" :class="`bl-ranking-item__rank--${rank}`">
+  <view class="ranking-item" :class="{ 'ranking-item--top': rank <= 3 }">
+    <view class="ranking-item__rank" :class="`ranking-item__rank--${rank}`">
       <text v-if="rank <= 3">{{ getRankIcon(rank) }}</text>
       <text v-else>{{ rank }}</text>
     </view>
-    <view class="bl-ranking-item__avatar">
-      <image :src="avatar" mode="aspectFill" class="bl-ranking-item__img" />
-      <view v-if="rank === 1" class="bl-ranking-item__crown">👑</view>
+    <view class="ranking-item__avatar">
+      <image :src="avatar || defaultAvatar" mode="aspectFill" class="ranking-item__img" />
+      <view v-if="rank === 1" class="ranking-item__crown">👑</view>
     </view>
-    <view class="bl-ranking-item__info">
-      <text class="bl-ranking-item__name">{{ name }}</text>
-      <text v-if="description" class="bl-ranking-item__desc">{{ description }}</text>
+    <view class="ranking-item__info">
+      <text class="ranking-item__name">{{ name }}</text>
+      <text v-if="description" class="ranking-item__desc">{{ description }}</text>
     </view>
-    <view class="bl-ranking-item__score">
-      <text class="bl-ranking-item__score-value">{{ score }}</text>
-      <text class="bl-ranking-item__score-unit">{{ unit }}</text>
+    <view class="ranking-item__score">
+      <text class="ranking-item__score-value">{{ score }}</text>
+      <text class="ranking-item__score-unit">{{ unit }}</text>
     </view>
   </view>
 </template>
@@ -43,9 +43,11 @@ const props = defineProps({
   },
   unit: {
     type: String,
-    default: '积分'
+    default: '分'
   }
 })
+
+const defaultAvatar = 'https://trae-api-cn.mchost.guru/api/ide/v1/text-to-image?prompt=cute%20cartoon%20child%20avatar&image-size=square'
 
 const getRankIcon = (rank) => {
   const icons = ['🥇', '🥈', '🥉']
@@ -56,7 +58,7 @@ const getRankIcon = (rank) => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.bl-ranking-item {
+.ranking-item {
   display: flex;
   align-items: center;
   padding: $spacing-lg $spacing-xl;

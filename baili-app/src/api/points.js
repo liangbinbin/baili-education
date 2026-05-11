@@ -1,34 +1,47 @@
-import { get, post } from './request'
+import request from './request'
 
-export const getPointsBalance = () => {
-  return get('/points/balance')
+export const getMyPoints = () => {
+  return request({
+    url: '/api/points/my',
+    method: 'GET'
+  })
 }
 
 export const getPointsRecords = (params) => {
-  return get('/points/records', params)
+  return request({
+    url: '/api/points/records',
+    method: 'GET',
+    data: params
+  })
 }
 
 export const getPointsRanking = (params) => {
-  return get('/points/ranking', params)
+  return request({
+    url: '/api/points/ranking',
+    method: 'GET',
+    data: params
+  })
 }
 
 export const getPointsRules = () => {
-  return get('/points/rules')
+  return request({
+    url: '/api/points/rules',
+    method: 'GET'
+  })
 }
 
-export const addPoints = (data) => {
-  return post('/points/add', data)
-}
-
-export const exchangePoints = (data) => {
-  return post('/points/exchange', data)
+export const shareReward = (data) => {
+  return request({
+    url: '/api/points/share-reward',
+    method: 'POST',
+    data
+  })
 }
 
 export default {
-  getPointsBalance,
-  getPointsRecords,
-  getPointsRanking,
-  getPointsRules,
-  addPoints,
-  exchangePoints
+  my: getMyPoints,
+  records: getPointsRecords,
+  ranking: getPointsRanking,
+  rules: getPointsRules,
+  shareReward
 }
