@@ -6,6 +6,16 @@
       <text class="app-slogan">让每个孩子都能自信表达</text>
     </view>
 
+    <view class="test-accounts">
+      <text class="test-title">📱 测试账号：</text>
+      <view class="test-list">
+        <text class="test-item">• 13800138000 - 小明同学</text>
+        <text class="test-item">• 13800138001 - 小红同学</text>
+        <text class="test-item">• 13800138002 - 测试学员</text>
+        <text class="test-item">• 任意手机号 + 任意6位验证码</text>
+      </view>
+    </view>
+
     <view class="login-form">
       <view class="form-item">
         <view class="input-wrapper">
@@ -144,6 +154,33 @@ const handleAgreementChange = (e) => {
   padding: 120rpx $spacing-xl $spacing-xl;
   display: flex;
   flex-direction: column;
+}
+
+.test-accounts {
+  background: $color-bg-card;
+  border-radius: $radius-card;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  box-shadow: $shadow-default;
+
+  .test-title {
+    font-size: $font-size-body;
+    font-weight: $font-weight-semibold;
+    color: $color-text-primary;
+    display: block;
+    margin-bottom: $spacing-sm;
+  }
+
+  .test-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+
+    .test-item {
+      font-size: $font-size-caption;
+      color: $color-text-secondary;
+    }
+  }
 }
 
 .login-header {
