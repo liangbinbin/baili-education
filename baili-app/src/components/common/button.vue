@@ -1,14 +1,15 @@
 <template>
   <view
-    class="bl-button"
+    class="button"
     :class="[
       typeClass,
       sizeClass,
-      { 'bl-button--disabled': disabled, 'bl-button--plain': plain, 'bl-button--round': round }
+      { 'button--disabled': disabled, 'button--loading': loading, 'button--block': block }
     ]"
     :disabled="disabled"
     @click="handleClick"
   >
+    <view v-if="loading" class="loading-spinner"></view>
     <slot></slot>
   </view>
 </template>
@@ -20,22 +21,22 @@ const props = defineProps({
   type: {
     type: String,
     default: 'primary',
-    validator: (val) => ['primary', 'default', 'danger', 'success', 'warning'].includes(val)
+    validator: (val) => ['primary', 'secondary', 'outline', 'text', 'danger', 'success', 'warning'].includes(val)
   },
   size: {
     type: String,
     default: 'medium',
     validator: (val) => ['small', 'medium', 'large'].includes(val)
   },
-  plain: {
+  disabled: {
     type: Boolean,
     default: false
   },
-  round: {
+  loading: {
     type: Boolean,
-    default: true
+    default: false
   },
-  disabled: {
+  block: {
     type: Boolean,
     default: false
   }
@@ -43,11 +44,11 @@ const props = defineProps({
 
 const emit = defineEmits(['click'])
 
-const typeClass = computed(() => `bl-button--${props.type}`)
-const sizeClass = computed(() => `bl-button--${props.size}`)
+const typeClass = computed(() => `button--${props.type}`)
+const sizeClass = computed(() => `button--${props.size}`)
 
 const handleClick = (e) => {
-  if (!props.disabled) {
+  if (!props.disabled && !props.loading) {
     emit('click', e)
   }
 }
@@ -56,70 +57,54 @@ const handleClick = (e) => {
 <style lang="scss" scoped>
 @import '@/styles/variables.scss';
 
-.bl-button {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: $font-weight-medium;
-  transition: all 0.2s;
+  transition: all $transition-fast;
   outline: none;
   border: none;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
 
   &--primary {
-    background: $color-primary;
+    background: $color-primary-gradient;
     color: $color-text-white;
-
-    &.bl-button--plain {
-      background: $color-primary-light;
-      color: $color-primary;
-      border: 1px solid $color-primary;
-    }
+    box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.3);
   }
 
-  &--default {
+  &--secondary {
     background: $color-bg-card;
     color: $color-text-primary;
-    border: 1px solid $color-border;
+    border: 2rpx solid $color-border;
+  }
 
-    &.bl-button--plain {
-      background: transparent;
-      border: 1px solid $color-border;
-    }
+  &--outline {
+    background: transparent;
+    color: $color-primary;
+    border: 2rpx solid $color-primary;
+  }
+
+  &--text {
+    background: transparent;
+    color: $color-primary;
   }
 
   &--danger {
     background: $color-danger;
     color: $color-text-white;
-
-    &.bl-button--plain {
-      background: $color-danger-light;
-      color: $color-danger;
-      border: 1px solid $color-danger;
-    }
   }
 
   &--success {
     background: $color-success;
     color: $color-text-white;
-
-    &.bl-button--plain {
-      background: $color-success-light;
-      color: $color-success;
-      border: 1px solid $color-success;
-    }
   }
 
   &--warning {
     background: $color-warning;
     color: $color-text-white;
-
-    &.bl-button--plain {
-      background: $color-warning-light;
-      color: $color-warning;
-      border: 1px solid $color-warning;
-    }
   }
 
   &--small {
@@ -129,25 +114,39 @@ const handleClick = (e) => {
   }
 
   &--medium {
-    padding: $spacing-sm $spacing-xl;
+    padding: $spacing-sm $spacing-lg;
     font-size: $font-size-body;
     border-radius: $radius-button;
   }
 
   &--large {
-    padding: $spacing-md $spacing-xxl;
+    height: 96rpx;
+    padding: 0 $spacing-xl;
     font-size: $font-size-h3;
     border-radius: $radius-button;
+  }
+
+  &--block {
     width: 100%;
   }
 
-  &--round {
-    border-radius: $radius-full;
-  }
-
   &--disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
+
+  .loading-spinner {
+    width: 32rpx;
+    height: 32rpx;
+    border: 3rpx solid rgba(255, 255, 255, 0.3);
+    border-top-color: $color-text-white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: $spacing-xs;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

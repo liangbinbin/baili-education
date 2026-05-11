@@ -1,47 +1,28 @@
 import { post } from './request'
-import { storage } from '@/utils/storage'
 
-export const login = (data) => {
-  return post('/auth/login', data).then(res => {
-    storage.set('token', res.data.token)
-    storage.set('user', res.data.user)
-    return res
-  })
+// 发送验证码
+export const sendCode = (phone) => {
+  return post('/api/auth/send-code', { phone })
 }
 
-export const logout = () => {
-  return post('/auth/logout').then(res => {
-    storage.remove('token')
-    storage.remove('user')
-    return res
-  })
+// 验证码登录
+export const verifyCode = (phone, code) => {
+  return post('/api/auth/verify-code', { phone, code })
 }
 
-export const getSmsCode = (phone) => {
-  return post('/auth/sms-code', { phone })
-}
-
-export const loginByCode = (phone, code) => {
-  return post('/auth/login-by-code', { phone, code }).then(res => {
-    storage.set('token', res.data.token)
-    storage.set('user', res.data.user)
-    return res
-  })
-}
-
+// 微信绑定
 export const bindWechat = (code) => {
-  return post('/auth/bind-wechat', { code })
+  return post('/api/auth/wx-bind', { code })
 }
 
+// 获取用户信息
 export const getUserInfo = () => {
-  return post('/auth/user-info')
+  return post('/api/auth/user-info')
 }
 
 export default {
-  login,
-  logout,
-  getSmsCode,
-  loginByCode,
+  sendCode,
+  verifyCode,
   bindWechat,
   getUserInfo
 }

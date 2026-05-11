@@ -75,7 +75,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/store/user'
-import { getSmsCode } from '@/api/auth'
+import { sendCode } from '@/api/auth'
 import { validatePhone } from '@/utils/validate'
 
 const userStore = useUserStore()
@@ -99,7 +99,7 @@ const handleGetCode = async () => {
   }
 
   try {
-    await getSmsCode(phone.value)
+    await sendCode(phone.value)
     uni.showToast({ title: '验证码已发送', icon: 'success' })
     
     countdown.value = 60

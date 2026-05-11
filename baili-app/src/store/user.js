@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { storage } from '@/utils/storage'
-import { login, logout, getSmsCode, loginByCode, getUserInfo } from '@/api/auth'
+import { sendCode, verifyCode, bindWechat, getUserInfo } from '@/api/auth'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(storage.get('token', ''))
   const userInfo = ref(storage.get('user', null))
+  const accounts = ref(storage.get('accounts', []))
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -17,24 +18,32 @@ export const useUserStore = defineStore('user', () => {
   const setUserInfo = (info) => {
     userInfo.value = info
     storage.set('user', info)
-  }
-
-  const doLogin = async (data) => {
-    const res = await login(data)
-    setToken(res.data.token)
-    setUserInfo(res.data.user)
-    return res
+    
+    // 保存到账户列表
+    if (info) {
+      const existingAccountIndex = accounts.value.findIndex(a => a.id === info.id)
+      if (existingAccountIndex >= 0) {
+        accounts.value[existingAccountIndex] = info
+      } else {
+        accounts.value.push(info)
+      }
+      storage.set('accounts', accounts.value)
+    }
   }
 
   const doLoginByCode = async (phone, code) => {
-    const res = await loginByCode(phone, code)
-    setToken(res.data.token)
-    setUserInfo(res.data.user)
+    const res = await verifyCode(phone, code)
+    setToken(res.token)
+    setUserInfo(res.user)
+    return res
+  }
+
+  const doBindWechat = async (code) => {
+    const res = await bindWechat(code)
     return res
   }
 
   const doLogout = async () => {
-    await logout()
     token.value = ''
     userInfo.value = null
     storage.remove('token')
@@ -43,8 +52,14 @@ export const useUserStore = defineStore('user', () => {
 
   const fetchUserInfo = async () => {
     const res = await getUserInfo()
-    setUserInfo(res.data)
+    setUserInfo(res)
     return res
+  }
+
+  const switchAccount = async (account) => {
+    // 切换账户逻辑
+    setUserInfo(account)
+    // 可以在这里重新获取 token 等
   }
 
   const updateUserInfo = (info) => {
@@ -54,13 +69,15 @@ export const useUserStore = defineStore('user', () => {
   return {
     token,
     userInfo,
+    accounts,
     isLoggedIn,
     setToken,
     setUserInfo,
-    doLogin,
     doLoginByCode,
+    doBindWechat,
     doLogout,
     fetchUserInfo,
+    switchAccount,
     updateUserInfo
   }
 })

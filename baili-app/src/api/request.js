@@ -1,11 +1,13 @@
-import { storage } from '@/utils/storage'
+import storage from '@/utils/storage.js';
 
-const BASE_URL = 'https://api.baili.example.com'
+const BASE_URL = '';
 
-const request = (options) => {
-  const token = storage.get('token')
-  
+export function request(options) {
   return new Promise((resolve, reject) => {
+    const token = storage.get('token');
+    
+    uni.showLoading({ title: '加载中...', mask: true });
+    
     uni.request({
       url: BASE_URL + options.url,
       method: options.method || 'GET',
@@ -16,54 +18,41 @@ const request = (options) => {
         ...options.header
       },
       success: (res) => {
+        uni.hideLoading();
+        
         if (res.statusCode === 200) {
-          if (res.data.code === 0) {
-            resolve(res.data)
-          } else if (res.data.code === 401) {
-            storage.remove('token')
-            storage.remove('user')
-            uni.reLaunch({ url: '/pages/login/index' })
-            reject(res.data)
+          const data = res.data;
+          
+          // Token 过期
+          if (data.code === 401) {
+            storage.remove('token');
+            uni.reLaunch({ url: '/pages/login/index' });
+            reject(new Error('登录已过期'));
+            return;
+          }
+          
+          if (data.code === 200) {
+            resolve(data.data);
           } else {
-            uni.showToast({
-              title: res.data.message || '请求失败',
-              icon: 'none'
-            })
-            reject(res.data)
+            uni.showToast({ title: data.message || '请求失败', icon: 'none' });
+            reject(new Error(data.message));
           }
         } else {
-          uni.showToast({
-            title: '网络错误',
-            icon: 'none'
-          })
-          reject(res)
+          uni.showToast({ title: '网络错误', icon: 'none' });
+          reject(new Error('网络错误'));
         }
       },
       fail: (err) => {
-        uni.showToast({
-          title: '网络连接失败',
-          icon: 'none'
-        })
-        reject(err)
+        uni.hideLoading();
+        uni.showToast({ title: '请求失败', icon: 'none' });
+        reject(err);
       }
-    })
-  })
+    });
+  });
 }
 
-export const get = (url, data, options = {}) => {
-  return request({ url, method: 'GET', data, ...options })
-}
-
-export const post = (url, data, options = {}) => {
-  return request({ url, method: 'POST', data, ...options })
-}
-
-export const put = (url, data, options = {}) => {
-  return request({ url, method: 'PUT', data, ...options })
-}
-
-export const del = (url, data, options = {}) => {
-  return request({ url, method: 'DELETE', data, ...options })
-}
-
-export default request
+// 导出常用方法
+export const get = (url, data) => request({ url, method: 'GET', data });
+export const post = (url, data) => request({ url, method: 'POST', data });
+export const put = (url, data) => request({ url, method: 'PUT', data });
+export const del = (url, data) => request({ url, method: 'DELETE', data });
