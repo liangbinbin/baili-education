@@ -1,28 +1,47 @@
 import { get, post, put, del } from './request'
 
-export const getCourseList = (params) => {
-  return get('/course/list', params)
-}
+// 模拟课程数据
+const mockCourses = [
+  {
+    id: '1',
+    name: '演讲基础',
+    description: '从零开始学习演讲技巧',
+    coverUrl: '',
+    totalStudents: 156,
+    totalClasses: 24,
+    teacherName: '李老师'
+  },
+  {
+    id: '2',
+    name: '演讲进阶',
+    description: '提升演讲表现力',
+    coverUrl: '',
+    totalStudents: 89,
+    totalClasses: 18,
+    teacherName: '王老师'
+  },
+  {
+    id: '3',
+    name: '少儿口才',
+    description: '培养孩子的表达能力',
+    coverUrl: '',
+    totalStudents: 234,
+    totalClasses: 32,
+    teacherName: '张老师'
+  }
+]
 
-export const getCourseDetail = (id) => {
-  return get('/course/detail', { id })
-}
+export const getCourseList = (params) => Promise.resolve({ list: mockCourses })
 
-export const createCourse = (data) => {
-  return post('/course/create', data)
-}
+export const getCourseDetail = (id) => Promise.resolve(mockCourses.find(c => c.id === id) || mockCourses[0])
 
-export const updateCourse = (data) => {
-  return put('/course/update', data)
-}
+export const createCourse = (data) => Promise.resolve({ success: true })
 
-export const deleteCourse = (id) => {
-  return del('/course/delete', { id })
-}
+export const updateCourse = (data) => Promise.resolve({ success: true })
 
-export const getMyCourses = () => {
-  return get('/course/my')
-}
+export const deleteCourse = (id) => Promise.resolve({ success: true })
+
+export const getMyCourses = () => Promise.resolve({ list: mockCourses.slice(0, 2) })
 
 export default {
   getCourseList,
